@@ -1,0 +1,16 @@
+├── pages
+│   ├── index
+│   │   └── index.vue      // 首页
+│   ├── menu
+│   │   └── menu.vue       // 菜单页
+│   ├── cart
+│   │   └── cart.vue       // 购物车
+│   └── mine
+│       └── mine.vue       // 个人中心
+├── components
+│   ├── food-item.vue      // 菜品组件
+│   └── cart-item.vue      // 购物车项目组件
+├── static
+│   └── images/           // 图片资源
+└── store
+    └── index.js         // Vuex状态管理 
