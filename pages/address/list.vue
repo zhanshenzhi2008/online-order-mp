@@ -3,23 +3,23 @@
     <!-- 地址列表 -->
     <view class="list" v-if="addressList.length">
       <view class="address-item" 
-            v-for="item in addressList" 
-            :key="item.id"
-            @tap="selectAddress(item)">
+            v-for="address in addressList" 
+            :key="address.id"
+            @click="handleAddressClick(address)">
         <view class="info">
           <view class="user">
-            <text class="name">{{item.name}}</text>
-            <text class="phone">{{item.phone}}</text>
-            <text class="tag" v-if="item.tag">{{item.tag}}</text>
+            <text class="name">{{address.name}}</text>
+            <text class="phone">{{address.phone}}</text>
+            <text class="tag" v-if="address.tag">{{address.tag}}</text>
           </view>
           <view class="address-line">
             <view class="address">
-              <text class="label" v-if="item.isDefault">[默认]</text>
-              {{item.province}}{{item.city}}{{item.district}}{{item.detail}}
+              <text class="label" v-if="address.isDefault">[默认]</text>
+              {{address.province}}{{address.city}}{{address.district}}{{address.detail}}
             </view>
-            <view class="actions">
-              <text class="icon edit" @tap.stop="editAddress(item)">✎</text>
-              <text class="icon delete" @tap.stop="deleteAddress(item)">✕</text>
+            <view class="actions" v-if="!isSelectMode">
+              <text class="icon edit" @tap.stop="editAddress(address)">✎</text>
+              <text class="icon delete" @tap.stop="deleteAddress(address)">✕</text>
             </view>
           </view>
         </view>
@@ -32,67 +32,38 @@
       <text>暂无收货地址</text>
     </view>
     
-    <!-- 添加按钮 -->
-    <button class="add-btn" @tap="addAddress">
-      新增
-    </button>
+    <!-- 底部按钮 -->
+    <view class="bottom-button">
+      <button class="add-button" @click="addAddress">新增地址</button>
+    </view>
   </view>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { addressApi } from '@/utils/api'
+import { useAddressStore } from '@/stores'
 
+const addressStore = useAddressStore()
 const addressList = ref([])
-const selectMode = ref(false)
+const isSelectMode = ref(false)
 
-// 加载地址列表
-const loadAddressList = async () => {
-  try {
-    const res = await addressApi.getAddressList()
-    if (res.code === 0) {
-      addressList.value = res.data
-    } else {
-      throw new Error(res.message || '加载失败')
+// 处理地址点击
+const handleAddressClick = (address) => {
+  if (isSelectMode.value) {
+    // 选择模式下，选中地址并返回
+    const pages = getCurrentPages()
+    const prevPage = pages[pages.length - 2]
+    if (prevPage && prevPage.$vm) {
+      // 获取上一页的事件通道
+      const eventChannel = prevPage.$vm.getOpenerEventChannel()
+      // 触发地址选择事件
+      eventChannel.emit('addressSelected', address)
     }
-  } catch (error) {
-    uni.showToast({
-      title: error.message || '加载失败',
-      icon: 'none'
-    })
-  }
-}
-
-// 选择地址
-const selectAddress = (address) => {
-  if (!selectMode.value) return
-  
-  // 返回上一页并传递选中的地址
-  const pages = getCurrentPages()
-  const prevPage = pages[pages.length - 2]
-  prevPage.$vm.setAddress(address)
-  uni.navigateBack()
-}
-
-// 设置默认地址
-const setDefault = async (address) => {
-  if (address.isDefault) return
-  
-  try {
-    const res = await addressApi.updateAddress({
-      ...address,
-      isDefault: true
-    })
-    if (res.code === 0) {
-      await loadAddressList()
-    } else {
-      throw new Error(res.message || '设置失败')
-    }
-  } catch (error) {
-    uni.showToast({
-      title: error.message || '设置失败',
-      icon: 'none'
-    })
+    // 返回上一页
+    uni.navigateBack()
+  } else {
+    // 普通模式下，进入编辑页面
+    editAddress(address)
   }
 }
 
@@ -110,19 +81,8 @@ const deleteAddress = (address) => {
     content: '确定要删除该地址吗？',
     success: async (res) => {
       if (res.confirm) {
-        try {
-          const res = await addressApi.deleteAddress(address.id)
-          if (res.code === 0) {
-            await loadAddressList()
-          } else {
-            throw new Error(res.message || '删除失败')
-          }
-        } catch (error) {
-          uni.showToast({
-            title: error.message || '删除失败',
-            icon: 'none'
-          })
-        }
+        await addressStore.deleteAddress(address.id)
+        loadAddressList()
       }
     }
   })
@@ -135,10 +95,27 @@ const addAddress = () => {
   })
 }
 
+// 加载地址列表
+const loadAddressList = async () => {
+  addressList.value = await addressStore.getAddressList()
+}
+
 // 页面加载
-onMounted((options) => {
-  selectMode.value = options && options.select === 'true'
+onMounted(() => {
+  // 获取页面参数，判断是否是选择模式
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  isSelectMode.value = currentPage && currentPage.options && currentPage.options.select === 'true'
+  
+  // 加载地址列表
   loadAddressList()
+})
+
+// 定义页面生命周期方法
+defineExpose({
+  onShow() {
+    loadAddressList()
+  }
 })
 </script>
 
@@ -238,7 +215,7 @@ onMounted((options) => {
     }
   }
   
-  .add-btn {
+  .bottom-button {
     // #ifdef H5
     position: fixed;
     left: 50%;
@@ -261,6 +238,13 @@ onMounted((options) => {
     color: #fff;
     font-size: 32rpx;
     border-radius: 44rpx;
+  }
+}
+
+// 选择模式下的样式调整
+.address-item {
+  &:active {
+    opacity: 0.8;
   }
 }
 </style> 

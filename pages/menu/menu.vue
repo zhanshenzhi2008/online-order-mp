@@ -125,8 +125,7 @@ import { ref, nextTick, onMounted, provide, computed } from 'vue'
 import CartBar from '@/components/cart-bar.vue'
 import foodItem from '@/components/food-item.vue'
 import { foodApi } from '@/utils/api'
-import { useStoreStore } from '@/stores'
-import { useCartStore } from '@/stores'
+import { useStoreStore, useCartStore, useOrderStore } from '@/stores'
 import CartPopup from '@/components/cart-popup.vue'
 
 const categories = ref([])
@@ -138,6 +137,7 @@ const categoryPositions = ref([])
 const cartBarRef = ref(null)
 const storeStore = useStoreStore()
 const cartStore = useCartStore()
+const orderStore = useOrderStore()
 const cartPopup = ref(null)
 
 // 轮播图数据
@@ -304,13 +304,11 @@ const goToPay = () => {
       status: '待支付'
     }
     
-    // 跳转到支付页面，并传递订单信息
+    // 先设置订单信息，再跳转
+    orderStore.setCurrentOrder(order)
+    
     uni.navigateTo({
-      url: '/pages/order/pay',
-      success: () => {
-        // 可以将订单信息存储到 store 中，以便支付页面使用
-        orderStore.setCurrentOrder(order)
-      }
+      url: '/pages/order/pay'
     })
   }
 }

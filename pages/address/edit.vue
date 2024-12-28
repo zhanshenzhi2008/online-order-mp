@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAddressStore } from '@/stores'
 import RegionPicker from '@/components/region-picker.vue'
 import AddressDetail from '@/components/address-detail.vue'
@@ -193,23 +193,47 @@ const saveAddress = async () => {
     return
   }
 
+  // 构造保存的数据
+  const saveData = {
+    id: formData.value.id,
+    name: formData.value.name,
+    phone: formData.value.phone,
+    province: formData.value.province,
+    city: formData.value.city,
+    district: formData.value.district,
+    detail: formData.value.detail,
+    tag: formData.value.tag,
+    isDefault: formData.value.is_default
+  }
+
   try {
-    let success
+    let res
     if (isEdit.value) {
-      success = await addressStore.updateAddress(formData.value)
+      res = await addressStore.updateAddress(saveData)
     } else {
-      success = await addressStore.addAddress(formData.value)
+      res = await addressStore.addAddress(saveData)
     }
-    if (success) {
+
+    if (res.code === 0) {
       uni.showToast({
         title: '保存成功',
-        icon: 'success'
+        icon: 'success',
+        duration: 2000,
+        success: () => {
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1500)
+        }
       })
-      uni.navigateBack()
+    } else {
+      uni.showToast({
+        title: res.message || '保存失败',
+        icon: 'none'
+      })
     }
   } catch (error) {
     uni.showToast({
-      title: '保存失败',
+      title: error.message || '保存失败',
       icon: 'none'
     })
   }
@@ -250,7 +274,7 @@ const handleRegionChange = (region) => {
   formData.value.region = region.value
 }
 
-// 详细���址变化回调
+// 详细地址变化回调
 const handleAddressChange = (address) => {
   formData.value.address = address
 }
@@ -259,13 +283,37 @@ const handleAddressChange = (address) => {
 onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  const { id } = currentPage.options
-  
+  const id = currentPage && currentPage.options && currentPage.options.id
+
   if (id) {
     isEdit.value = true
-    const address = addressStore.addressList.find(item => item.id === id)
+    // 从 store 中获取地址详情
+    const address = addressStore.getAddressById(Number(id))
     if (address) {
-      formData.value = { ...address }
+      // 将地址信息填充到表单，确保所有字段都正确映射
+      formData.value = {
+        id: address.id,
+        name: address.name,
+        phone: address.phone,
+        province: address.province,
+        city: address.city,
+        district: address.district,
+        region: `${address.province} ${address.city} ${address.district}`, // 组合地区显示
+        address: address.detail || '', // 详细地址
+        detail: address.detail || '', // 门牌号
+        tag: address.tag || '', // 标签
+        is_default: !!address.isDefault // 确保布尔值转换
+      }
+    } else {
+      uni.showToast({
+        title: '地址不存在',
+        icon: 'none',
+        success: () => {
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1500)
+        }
+      })
     }
   }
 })
