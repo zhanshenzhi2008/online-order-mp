@@ -1,167 +1,47 @@
 import { defineStore } from 'pinia'
-import { orderApi } from '@/utils/api'
+import { ref } from 'vue'
 
-export const useOrderStore = defineStore('order', {
-  state: () => ({
-    orderList: [],
-    currentOrder: null,
-    loading: false,
-    error: null
-  }),
+export const useOrderStore = defineStore('order', () => {
+  const cartList = ref([])
+  const currentOrder = ref(null) // 添加当前订单状态
 
-  actions: {
-    // 获取订单列表
-    async getOrderList(params = {}) {
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.getOrders(params)
-        if (res.code === 0) {
-          this.orderList = res.data
-          return { success: true }
-        } else {
-          throw new Error(res.message || '获取订单列表失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
+  // 获取订单列表
+  const getOrderList = async () => {
+    // TODO: 这里替换为实际的 API 调用
+    // 目前使用模拟数据
+    return [
+      {
+        id: 1,
+        orderNo: 'ORDER2024001',
+        status: '制作中',
+        totalAmount: 99.00,
+        createTime: '2024-03-20 14:30:00',
+        goods: [{
+          id: 1,
+          name: '烤羊肉串',
+          price: 3.00,
+          quantity: 10,
+          image: '/static/images/goods/yangrou.png'
+        }]
       }
-    },
+    ]
+  }
 
-    // 获取订单详情
-    async getOrderDetail(id) {
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.getOrderDetail(id)
-        if (res.code === 0) {
-          this.currentOrder = res.data
-          return { success: true }
-        } else {
-          throw new Error(res.message || '获取订单详情失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
+  // 设置当前订单
+  const setCurrentOrder = (order) => {
+    currentOrder.value = order
+  }
 
-    // 取消订单
-    async cancelOrder(order) {
-      if (this.currentOrder && this.currentOrder.id === order.id) {
-        this.currentOrder = null
-      }
+  // 清除当前订单
+  const clearCurrentOrder = () => {
+    currentOrder.value = null
+  }
 
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.cancelOrder(order.id)
-        if (res.code === 0) {
-          await this.getOrderList()
-          return { success: true }
-        } else {
-          throw new Error(res.message || '取消失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // 支付订单
-    async payOrder(order) {
-      if (this.currentOrder && this.currentOrder.id === order.id) {
-        this.currentOrder = null
-      }
-
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.payOrder(order.id)
-        if (res.code === 0) {
-          await this.getOrderList()
-          return { success: true }
-        } else {
-          throw new Error(res.message || '支付失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // 确认收货
-    async confirmOrder(order) {
-      if (this.currentOrder && this.currentOrder.id === order.id) {
-        this.currentOrder = null
-      }
-
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.confirmOrder(order.id)
-        if (res.code === 0) {
-          await this.getOrderList()
-          return { success: true }
-        } else {
-          throw new Error(res.message || '确认收货失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // 删除订单
-    async deleteOrder(order) {
-      if (this.currentOrder && this.currentOrder.id === order.id) {
-        this.currentOrder = null
-      }
-
-      this.loading = true
-      this.error = null
-      try {
-        const res = await orderApi.deleteOrder(order.id)
-        if (res.code === 0) {
-          await this.getOrderList()
-          return { success: true }
-        } else {
-          throw new Error(res.message || '删除失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    }
+  return {
+    cartList,
+    currentOrder,
+    getOrderList,
+    setCurrentOrder,
+    clearCurrentOrder
   }
 }) 

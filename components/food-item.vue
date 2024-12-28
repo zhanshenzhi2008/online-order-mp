@@ -1,41 +1,28 @@
 <template>
   <view class="food-item">
-    <image class="food-image" :src="food.image" mode="aspectFill"></image>
-    <view class="food-content">
-      <text class="food-name">{{food.name}}</text>
-      <text class="food-desc" v-if="food.description">{{food.description}}</text>
-      <view class="tags" v-if="food.tags && food.tags.length">
+    <image :src="food.image" mode="aspectFill" class="food-image"></image>
+    <view class="food-info">
+      <text class="food-name">{{ food.name }}</text>
+      <text class="food-price">￥{{ food.price }}</text>
+      <view class="food-control">
         <text 
-          class="tag" 
-          v-for="(tag, index) in food.tags" 
-          :key="index"
-        >{{tag}}</text>
-      </view>
-      <view class="bottom-row">
-        <view class="price">
-          <text class="symbol">¥</text>
-          <text class="amount">{{food.price}}</text>
-        </view>
-        <view class="quantity-control" v-if="quantity > 0">
-          <button class="control-btn minus" @tap.stop="handleRemove">
-            <text class="icon">-</text>
-          </button>
-          <text class="quantity">{{quantity}}</text>
-          <button class="control-btn plus" @tap.stop="handleAdd">
-            <text class="icon">+</text>
-          </button>
-        </view>
-        <button v-else class="add-btn" @tap.stop="handleAdd">
-          <text class="icon">+</text>
-        </button>
+          v-if="quantity > 0" 
+          class="minus" 
+          @click.stop="updateCart(-1)"
+        >-</text>
+        <text v-if="quantity > 0" class="quantity">{{ quantity }}</text>
+        <text 
+          class="plus"
+          @click.stop="updateCart(1)"
+        >+</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue'
-import { cartApi } from '@/utils/api'
+import { ref, computed } from 'vue'
+import { useCartStore } from '@/stores'
 
 const props = defineProps({
   food: {
@@ -44,220 +31,82 @@ const props = defineProps({
   }
 })
 
-const quantity = ref(0)
+const cartStore = useCartStore()
 
-const refreshCart = inject('refreshCart')
-
-// 获取当前菜品在购物车中的数量
-const getCartQuantity = async () => {
-  try {
-    const res = await cartApi.getCartList()
-    if (res.code === 0) {
-      const cartItem = res.data.find(item => item.food_id === props.food.id)
-      quantity.value = cartItem ? cartItem.quantity : 0
-    }
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const handleAdd = async () => {
-  try {
-    const res = await cartApi.addToCart({
-      food_id: props.food.id,
-      quantity: 1
-    })
-    if (res.code === 0) {
-      quantity.value = res.data.quantity
-      uni.showToast({
-        title: '已添加',
-        icon: 'success'
-      })
-      if (refreshCart) {
-        refreshCart()
-      }
-    } else {
-      throw new Error(res.message || '添加失败')
-    }
-  } catch (error) {
-    uni.showToast({
-      title: error.message || '添加失败',
-      icon: 'none'
-    })
-  }
-}
-
-const handleRemove = async () => {
-  if (quantity.value <= 0) return
-  
-  try {
-    const res = await cartApi.decrease({
-      food_id: props.food.id
-    })
-    if (res.code === 0) {
-      quantity.value = res.data.quantity
-      if (refreshCart) {
-        refreshCart()
-      }
-    } else {
-      throw new Error(res.message || '操作失败')
-    }
-  } catch (error) {
-    uni.showToast({
-      title: error.message || '操作失败',
-      icon: 'none'
-    })
-  }
-}
-
-onMounted(() => {
-  getCartQuantity()
+// 获取当前商品在购物车中的数量
+const quantity = computed(() => {
+  const item = cartStore.cartList.find(item => item.id === props.food.id)
+  return item ? item.quantity : 0
 })
+
+// 更新购物车
+const updateCart = (delta) => {
+  if (delta > 0) {
+    cartStore.addToCart(props.food)
+  } else {
+    cartStore.updateCartItem({
+      ...props.food,
+      quantity: quantity.value + delta
+    })
+  }
+}
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .food-item {
   display: flex;
-  padding: 24rpx 0;
+  padding: 20rpx;
   background: #fff;
+  border-radius: 12rpx;
   
   .food-image {
     width: 160rpx;
     height: 160rpx;
-    border-radius: 12rpx;
-    margin-right: 24rpx;
-    flex-shrink: 0;
+    border-radius: 8rpx;
+    margin-right: 20rpx;
   }
   
-  .food-content {
+  .food-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    justify-content: space-between;
     
     .food-name {
-      font-size: 30rpx;
+      font-size: 28rpx;
       color: #333;
-      font-weight: 500;
-      margin-bottom: 8rpx;
-      line-height: 1.4;
+      font-weight: bold;
     }
     
-    .food-desc {
-      font-size: 24rpx;
-      color: #999;
-      margin-bottom: 12rpx;
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
+    .food-price {
+      font-size: 32rpx;
+      color: #ff6b81;
+      font-weight: bold;
+      margin: 10rpx 0;
     }
     
-    .tags {
+    .food-control {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8rpx;
-      margin-bottom: 12rpx;
-      
-      .tag {
-        font-size: 22rpx;
-        color: #91683d;
-        padding: 2rpx 12rpx;
-        background: rgba(145, 104, 61, 0.1);
-        border-radius: 4rpx;
-      }
-    }
-    
-    .bottom-row {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-top: auto;
+      justify-content: flex-end;
       
-      .price {
-        display: flex;
-        align-items: baseline;
-        
-        .symbol {
-          font-size: 24rpx;
-          color: #91683d;
-          margin-right: 2rpx;
-        }
-        
-        .amount {
-          font-size: 32rpx;
-          color: #91683d;
-          font-weight: bold;
-        }
-      }
-      
-      .quantity-control {
-        display: flex;
-        align-items: center;
-        height: 48rpx;
-        
-        .control-btn {
-          width: 48rpx;
-          height: 48rpx;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #fff;
-          border: none;
-          
-          &.minus {
-            .icon {
-              color: #666;
-              font-size: 36rpx;
-              font-weight: bold;
-            }
-          }
-          
-          &.plus {
-            .icon {
-              color: #91683d;
-              font-size: 36rpx;
-              font-weight: bold;
-            }
-          }
-          
-          &:after {
-            border: none;
-          }
-        }
-        
-        .quantity {
-          min-width: 60rpx;
-          text-align: center;
-          font-size: 30rpx;
-          color: #333;
-        }
-      }
-      
-      .add-btn {
+      .minus,
+      .plus {
         width: 48rpx;
         height: 48rpx;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #91683d;
+        line-height: 48rpx;
+        text-align: center;
         border-radius: 50%;
-        border: none;
-        
-        .icon {
-          color: #fff;
-          font-size: 36rpx;
-          font-weight: bold;
-        }
-        
-        &:after {
-          border: none;
-        }
+        background: #ff6b81;
+        color: #fff;
+        font-size: 28rpx;
+      }
+      
+      .quantity {
+        min-width: 60rpx;
+        text-align: center;
+        margin: 0 20rpx;
+        font-size: 28rpx;
       }
     }
   }

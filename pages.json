@@ -13,18 +13,18 @@
   },
   "pages": [
     {
-      "path": "pages/menu/menu",
-      "style": {
-        "navigationBarTitleText": "点餐",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "首页",
         "enablePullDownRefresh": false,
         "navigationStyle": "default"
+      }
+    },
+    {
+      "path": "pages/menu/menu",
+      "style": {
+        "navigationBarTitleText": "点餐",
+        "enablePullDownRefresh": false
       }
     },
     {
@@ -46,6 +46,27 @@
       "style": {
         "navigationBarTitleText": "登录"
       }
+    },
+    {
+      "path": "pages/order/list",
+      "style": {
+        "navigationBarTitleText": "我的订单",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/order/index",
+      "style": {
+        "navigationBarTitleText": "订单",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/order/pay",
+      "style": {
+        "navigationBarTitleText": "订单支付",
+        "enablePullDownRefresh": false
+      }
     }
   ],
   "subPackages": [
@@ -56,12 +77,6 @@
           "path": "detail",
           "style": {
             "navigationBarTitleText": "订单详情"
-          }
-        },
-        {
-          "path": "list",
-          "style": {
-            "navigationBarTitleText": "我的订单"
           }
         }
       ]
@@ -115,7 +130,7 @@
   },
   "tabBar": {
     "color": "#999999",
-    "selectedColor": "#ff0000",
+    "selectedColor": "#ff6b81",
     "backgroundColor": "#ffffff",
     "list": [
       {
@@ -131,10 +146,10 @@
         "selectedIconPath": "static/images/tab-bar/menu-active.png"
       },
       {
-        "pagePath": "pages/cart/cart",
-        "text": "购物车",
-        "iconPath": "static/images/tab-bar/cart.png",
-        "selectedIconPath": "static/images/tab-bar/cart-active.png"
+        "pagePath": "pages/order/index",
+        "text": "订单",
+        "iconPath": "static/images/tab-bar/order.png",
+        "selectedIconPath": "static/images/tab-bar/order-active.png"
       },
       {
         "pagePath": "pages/mine/mine",

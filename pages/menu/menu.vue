@@ -20,8 +20,16 @@
         </view>
         <view class="store-right">
           <view class="status-tags">
-            <text class="status-tag">自取</text>
-            <text class="status-tag">外卖</text>
+            <text 
+              class="status-tag" 
+              :class="{ active: deliveryType === 'selfPickup' }"
+              @click="switchDeliveryType('selfPickup')"
+            >自取</text>
+            <text 
+              class="status-tag" 
+              :class="{ active: deliveryType === 'delivery' }"
+              @click="switchDeliveryType('delivery')"
+            >外卖</text>
           </view>
           <text class="distance">距您{{storeStore.currentStore.distance}}km</text>
         </view>
@@ -74,17 +82,52 @@
       </scroll-view>
     </view>
     
-    <!-- 购物车栏 -->
-    <CartBar ref="cartBarRef" />
+    <!-- 底部购物车栏 -->
+    <view 
+      class="cart-bar" 
+      v-show="cartTotal > 0"
+      @click="showCartPopup"
+    >
+      <view class="cart-left">
+        <view class="cart-icon-wrap" :class="{ 'has-goods': cartTotal > 0 }">
+          <image 
+            class="cart-icon" 
+            src="/static/images/cart/cart.png"
+          ></image>
+          <text v-if="cartTotal > 0" class="cart-badge">{{ cartTotal }}</text>
+        </view>
+        <view class="cart-info">
+          <text v-if="cartTotal > 0" class="cart-price">￥{{ cartAmount }}</text>
+          <text v-else class="cart-empty">购物车是空的</text>
+        </view>
+      </view>
+      <view 
+        class="cart-button" 
+        :class="{ 'active': cartTotal > 0 }"
+        @click.stop="goToPay"
+      >
+        去支付
+      </view>
+    </view>
+
+    <!-- 购物车弹出层 -->
+    <cart-popup
+      ref="cartPopup"
+      :cart-list="cartList"
+      :delivery-type="deliveryType"
+      @update="onCartUpdate"
+    />
   </view>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, provide } from 'vue'
+import { ref, nextTick, onMounted, provide, computed } from 'vue'
 import CartBar from '@/components/cart-bar.vue'
 import foodItem from '@/components/food-item.vue'
 import { foodApi } from '@/utils/api'
 import { useStoreStore } from '@/stores'
+import { useCartStore } from '@/stores'
+import CartPopup from '@/components/cart-popup.vue'
 
 const categories = ref([])
 const currentCategory = ref({})
@@ -94,6 +137,8 @@ const scrollTop = ref(0)
 const categoryPositions = ref([])
 const cartBarRef = ref(null)
 const storeStore = useStoreStore()
+const cartStore = useCartStore()
+const cartPopup = ref(null)
 
 // 轮播图数据
 const banners = ref([
@@ -101,6 +146,28 @@ const banners = ref([
   { image: '/static/images/banner2.jpg' },
   { image: '/static/images/banner3.jpg' }
 ])
+
+// 配送方式
+const deliveryType = ref('selfPickup') // 默认自取
+
+// 切换配送方式
+const switchDeliveryType = (type) => {
+  deliveryType.value = type
+  // 如果购物车不为空，提示用户
+  if (cartTotal.value > 0) {
+    uni.showModal({
+      title: '切换配送方式',
+      content: '切换配送方式将清空购物车，是否继续？',
+      success: (res) => {
+        if (res.confirm) {
+          cartStore.clearCart() // 清空购物车
+        } else {
+          deliveryType.value = type === 'selfPickup' ? 'delivery' : 'selfPickup' // 恢复原来的选择
+        }
+      }
+    })
+  }
+}
 
 // 加载分类下的菜品
 const loadCategoryFoods = async () => {
@@ -200,6 +267,54 @@ const refreshCart = () => {
 // 将 refreshCart 方法传递给 food-item 组件
 provide('refreshCart', refreshCart)
 
+// 计算购物车总数
+const cartTotal = computed(() => {
+  return cartStore.cartList.reduce((total, item) => total + item.quantity, 0)
+})
+
+// 计算购物车总金额
+const cartAmount = computed(() => {
+  return cartStore.cartList.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)
+})
+
+// 获取购物车列表
+const cartList = computed(() => cartStore.cartList)
+
+// 显示购物车弹窗
+const showCartPopup = () => {
+  if (cartTotal.value > 0) {
+    cartPopup.value.open()
+  }
+}
+
+// 购物车更新回调
+const onCartUpdate = () => {
+  // 可以在这里处理购物车更新后的逻辑
+}
+
+// 去支付
+const goToPay = () => {
+  if (cartTotal.value > 0) {
+    // 创建订单对象
+    const order = {
+      goods: cartList.value,
+      totalAmount: cartAmount.value,
+      deliveryType: deliveryType.value,
+      createTime: new Date().toISOString(),
+      status: '待支付'
+    }
+    
+    // 跳转到支付页面，并传递订单信息
+    uni.navigateTo({
+      url: '/pages/order/pay',
+      success: () => {
+        // 可以将订单信息存储到 store 中，以便支付页面使用
+        orderStore.setCurrentOrder(order)
+      }
+    })
+  }
+}
+
 onMounted(() => {
   loadCategories()
   storeStore.fetchStoreDetail() // 获取店铺详细信息
@@ -212,6 +327,8 @@ onMounted(() => {
   background: #f5f5f5;
   display: flex;
   flex-direction: column;
+  padding-bottom: calc(v-bind('cartTotal > 0 ? "100rpx" : 0') + constant(safe-area-inset-bottom));
+  padding-bottom: calc(v-bind('cartTotal > 0 ? "100rpx" : 0') + env(safe-area-inset-bottom));
   
   .banner {
     height: 240rpx;
@@ -226,7 +343,7 @@ onMounted(() => {
   .menu-content {
     flex: 1;
     display: flex;
-    height: calc(100vh - 240rpx - 100rpx);
+    height: calc(100vh - 240rpx);
     background: #fff;
     
     .category-list {
@@ -267,6 +384,7 @@ onMounted(() => {
       flex: 1;
       height: 100%;
       background: #fff;
+      padding-bottom: 20rpx;
       
       .category-foods {
         padding: 0 24rpx;
@@ -348,14 +466,19 @@ onMounted(() => {
         
         .status-tag {
           font-size: 22rpx;
-          color: #91683d;
-          padding: 2rpx 12rpx;
-          background: rgba(145, 104, 61, 0.1);
-          border-radius: 4rpx;
+          padding: 6rpx 20rpx;
+          border-radius: 24rpx;
+          background: #f5f5f5;
+          color: #666;
+          transition: all 0.3s;
           
-          &.closed {
-            color: #999;
-            background: rgba(153, 153, 153, 0.1);
+          &.active {
+            color: #fff;
+            background: #91683d;
+          }
+          
+          &:active {
+            opacity: 0.8;
           }
         }
       }
@@ -386,6 +509,92 @@ onMounted(() => {
       color: #999;
       margin-left: 8rpx;
     }
+  }
+}
+
+.cart-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--window-bottom);
+  height: 100rpx;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30rpx;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  z-index: 98;
+
+  .cart-left {
+    display: flex;
+    align-items: center;
+
+    .cart-icon-wrap {
+      position: relative;
+      margin-right: 20rpx;
+      margin-top: -40rpx;
+      z-index: 97;
+
+      &.has-goods {
+        .cart-icon {
+          background: #ff6b81;
+        }
+      }
+
+      .cart-icon {
+        width: 80rpx;
+        height: 80rpx;
+        padding: 16rpx;
+        border-radius: 50%;
+        background: #ccc;
+        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+      }
+
+      .cart-badge {
+        position: absolute;
+        top: -6rpx;
+        right: -6rpx;
+        min-width: 32rpx;
+        height: 32rpx;
+        line-height: 32rpx;
+        text-align: center;
+        background: #ff6b81;
+        color: #fff;
+        border-radius: 16rpx;
+        font-size: 20rpx;
+        padding: 0 6rpx;
+        z-index: 97;
+      }
+    }
+
+    .cart-info {
+      .cart-price {
+        font-size: 32rpx;
+        font-weight: bold;
+        color: #ff6b81;
+      }
+
+      .cart-empty {
+        font-size: 28rpx;
+        color: #999;
+      }
+    }
+  }
+}
+
+.cart-button {
+  width: 200rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  background: #ccc;
+  color: #fff;
+  border-radius: 36rpx;
+  font-size: 28rpx;
+
+  &.active {
+    background: #ff6b81;
   }
 }
 </style> 
