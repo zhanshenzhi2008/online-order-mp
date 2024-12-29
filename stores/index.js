@@ -5,8 +5,8 @@ import { useOrderStore } from './order'
 import { useAddressStore } from './address'
 import { useFoodStore } from './food'
 import { useDeliveryStore } from './delivery'
-import { useStoreStore } from './store'
 import { useMenuStore } from './menu'
+import { useShopStore } from './shop'
 
 // 创建 pinia 实例
 const store = createPinia()
@@ -22,6 +22,6 @@ export {
   useAddressStore,
   useFoodStore,
   useDeliveryStore,
-  useStoreStore,
-  useMenuStore
+  useMenuStore,
+  useShopStore
 }

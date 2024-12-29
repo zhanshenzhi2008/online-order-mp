@@ -85,12 +85,18 @@ const selectMode = (mode) => {
 
 // 跳转到点餐页面
 const goToMenu = (type) => {
-  // 使用 Pinia store 来存储配送方式
-  menuStore.setDeliveryType(type)
-  
-  uni.switchTab({
-    url: '/pages/menu/menu'
-  })
+  if (type === 'delivery') {
+    // 外卖模式，先跳转到门店列表
+    uni.navigateTo({
+      url: '/pages/shop/list'
+    })
+  } else {
+    // 自提模式，直接跳转到点餐页面
+    menuStore.setDeliveryType(type)
+    uni.switchTab({
+      url: '/pages/menu/menu'
+    })
+  }
 }
 
 </script>

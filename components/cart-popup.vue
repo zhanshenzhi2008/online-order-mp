@@ -102,7 +102,14 @@ defineExpose({
 })
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
+// 先定义 mixin
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cart-popup {
   min-height: 400rpx;
   max-height: 800rpx;
@@ -161,16 +168,19 @@ defineExpose({
         height: 120rpx;
         border-radius: 12rpx;
         margin-right: 20rpx;
+        flex-shrink: 0;
       }
 
       .goods-info {
         flex: 1;
-        padding-right: 20rpx;
+        min-width: 0;
+        margin-right: 20rpx;
 
         .goods-name {
           font-size: 28rpx;
           color: #333;
           margin-bottom: 10rpx;
+          @include text-ellipsis;
         }
 
         .goods-price {
@@ -183,6 +193,9 @@ defineExpose({
       .goods-control {
         display: flex;
         align-items: center;
+        width: 180rpx;
+        padding-right: 30rpx;
+        flex-shrink: 0;
 
         .minus,
         .plus {
@@ -193,14 +206,21 @@ defineExpose({
           border: 1rpx solid #eee;
           border-radius: 50%;
           color: #666;
+          background: #fff;
+          z-index: 1;
+          flex-shrink: 0;
         }
 
         .quantity {
-          min-width: 60rpx;
+          flex: 1;
           text-align: center;
-          margin: 0 20rpx;
           font-size: 28rpx;
+          padding: 0 10rpx;
         }
+      }
+
+      &:last-child {
+        border-bottom: none;
       }
     }
   }

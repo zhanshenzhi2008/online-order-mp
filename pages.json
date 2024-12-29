@@ -81,6 +81,13 @@
         "navigationBarTitleText": "支付结果",
         "enablePullDownRefresh": false
       }
+    },
+    {
+      "path": "pages/shop/list",
+      "style": {
+        "navigationBarTitleText": "选择门店",
+        "enablePullDownRefresh": false
+      }
     }
   ],
   "subPackages": [

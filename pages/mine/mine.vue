@@ -2,51 +2,51 @@
   <view class="mine-container">
     <!-- 用户信息区域 -->
     <view class="user-info" @tap="goToLogin">
-      <block v-if="userInfo">
-        <image :src="userInfo.avatar" mode="aspectFill" class="avatar"></image>
-        <view class="info">
-          <text class="nickname">{{userInfo.nickname}}</text>
-          <text class="phone">{{userInfo.phone}}</text>
-        </view>
-      </block>
-      <block v-else>
-        <image src="/static/images/default-avatar.png" mode="aspectFill" class="avatar"></image>
-        <view class="info">
-          <text class="login-tip">点击登录</text>
-        </view>
-      </block>
-    </view>
-
-    <!-- 订单区域 -->
-    <view class="order-section">
-      <view class="section-header">
-        <text class="title">我的订单</text>
-        <view class="more" @tap="goToOrderList">
-          <text>全部订单</text>
-          <text class="arrow">></text>
-        </view>
+      <view class="avatar-wrap">
+        <image 
+          class="avatar" 
+          :src="userInfo && userInfo.avatar ? userInfo.avatar : '/static/images/default-avatar.png'" 
+          mode="aspectFill"
+        ></image>
       </view>
-      <view class="order-types">
-        <view class="type-item" 
-          v-for="type in orderTypes" 
-          :key="type.name"
-          @tap="navigateTo(type.url)">
-          <image :src="type.icon" mode="aspectFit"></image>
-          <text>{{type.name}}</text>
-          <text class="badge" v-if="type.count">{{type.count}}</text>
-        </view>
+      <view class="info-content">
+        <text class="nickname">{{ userInfo && userInfo.nickname ? userInfo.nickname : '点击登录' }}</text>
+        <text class="phone" v-if="userInfo && userInfo.phone">{{ userInfo.phone }}</text>
       </view>
+      <text class="arrow">></text>
     </view>
 
     <!-- 功能列表 -->
-    <view class="function-list">
-      <view class="function-item" 
-        v-for="item in functionList" 
-        :key="item.name"
-        @tap="navigateTo(item.url)">
-        <view class="left">
-          <image :src="item.icon" mode="aspectFit"></image>
-          <text>{{item.name}}</text>
+    <view class="menu-list">
+      <view class="menu-item" @tap="goToAddress">
+        <view class="menu-left">
+          <image class="menu-icon" src="/static/images/mine/address.png"></image>
+          <text class="menu-name">收货地址</text>
+        </view>
+        <text class="arrow">></text>
+      </view>
+
+      <view class="menu-item" @tap="goToCoupons">
+        <view class="menu-left">
+          <image class="menu-icon" src="/static/images/mine/coupon.png"></image>
+          <text class="menu-name">优惠券</text>
+        </view>
+        <text class="count" v-if="couponCount">{{ couponCount }}张可用</text>
+        <text class="arrow">></text>
+      </view>
+
+      <view class="menu-item" @tap="goToInvoice">
+        <view class="menu-left">
+          <image class="menu-icon" src="/static/images/mine/invoice.png"></image>
+          <text class="menu-name">发票管理</text>
+        </view>
+        <text class="arrow">></text>
+      </view>
+
+      <view class="menu-item" @tap="goToSettings">
+        <view class="menu-left">
+          <image class="menu-icon" src="/static/images/mine/settings.png"></image>
+          <text class="menu-name">设置</text>
         </view>
         <text class="arrow">></text>
       </view>
@@ -56,64 +56,53 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores'
 
 const userStore = useUserStore()
-const { userInfo } = storeToRefs(userStore)
+const userInfo = ref(null)
+const couponCount = ref(0) // 可用优惠券数量
 
-// 订单类型
-const orderTypes = ref([
-  { name: '待付款', icon: '/static/images/order/pending.png', url: '/pages/order/list?status=pending' },
-  { name: '待发货', icon: '/static/images/order/preparing.png', url: '/pages/order/list?status=preparing' },
-  { name: '待收货', icon: '/static/images/order/delivering.png', url: '/pages/order/list?status=delivering' },
-  { name: '已完成', icon: '/static/images/order/completed.png', url: '/pages/order/list?status=completed' }
-])
-
-// 功能列表
-const functionList = ref([
-  { name: '收货地址', icon: '/static/images/functions/address.png', url: '/pages/address/list' },
-  { name: '设置', icon: '/static/images/functions/settings.png', url: '/pages/settings/index' }
-])
-
-// 获取用户信息
-const getUserInfo = async () => {
-  await userStore.getUserInfo()
-}
-
-// 去登录
+// 跳转到登录页
 const goToLogin = () => {
-  if (!userStore.isLoggedIn) {
+  if (!userInfo.value) {
     uni.navigateTo({
       url: '/pages/login/login'
     })
   }
 }
 
-// 跳转到订单列表
-const goToOrderList = () => {
-  if (userStore.isLoggedIn) {
-    uni.navigateTo({
-      url: '/pages/order/list'
-    })
-  } else {
-    goToLogin()
-  }
+// 跳转到地址管理
+const goToAddress = () => {
+  uni.navigateTo({
+    url: '/pages/address/list'
+  })
 }
 
-// 跳转到指定页面
-const navigateTo = (url) => {
-  if (userStore.isLoggedIn) {
-    uni.navigateTo({ url })
-  } else {
-    goToLogin()
-  }
+// 跳转到优惠券页面
+const goToCoupons = () => {
+  uni.navigateTo({
+    url: '/pages/coupon/list'
+  })
+}
+
+// 跳转到发票管理页面
+const goToInvoice = () => {
+  uni.navigateTo({
+    url: '/pages/invoice/list'
+  })
+}
+
+// 跳转到设置页面
+const goToSettings = () => {
+  uni.navigateTo({
+    url: '/pages/settings/index'
+  })
 }
 
 onMounted(() => {
-  if (userStore.isLoggedIn) {
-    getUserInfo()
-  }
+  userInfo.value = userStore.userInfo
+  // TODO: 获取优惠券数量
+  couponCount.value = 2 // 临时写死的数据
 })
 </script>
 
@@ -121,146 +110,95 @@ onMounted(() => {
 .mine-container {
   min-height: 100vh;
   background: #f5f5f5;
-  padding-bottom: 20rpx;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
   
   .user-info {
     display: flex;
     align-items: center;
-    padding: 40rpx 30rpx;
+    padding: 40rpx 32rpx;
     background: #fff;
     margin-bottom: 20rpx;
     
-    .avatar {
+    .avatar-wrap {
       width: 120rpx;
       height: 120rpx;
       border-radius: 50%;
-      margin-right: 30rpx;
+      overflow: hidden;
+      margin-right: 24rpx;
+      
+      .avatar {
+        width: 100%;
+        height: 100%;
+      }
     }
     
-    .info {
+    .info-content {
+      flex: 1;
+      
       .nickname {
         font-size: 32rpx;
         font-weight: bold;
-        margin-bottom: 10rpx;
+        color: #333;
+        margin-bottom: 8rpx;
+        display: block;
       }
       
       .phone {
-        font-size: 28rpx;
-        color: #666;
-      }
-      
-      .login-tip {
-        font-size: 32rpx;
+        font-size: 26rpx;
         color: #999;
       }
     }
-  }
-  
-  .order-section {
-    background: #fff;
-    margin-bottom: 20rpx;
     
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20rpx 30rpx;
-      border-bottom: 1px solid #eee;
-      
-      .title {
-        display: flex;
-        align-items: center;
-        font-size: 32rpx;
-        font-weight: bold;
-        height: 44rpx;
-        line-height: 44rpx;
-      }
-      
-      .more {
-        font-size: 28rpx;
-        color: #999;
-        
-        .arrow {
-          margin-left: 10rpx;
-        }
-      }
-    }
-    
-    .order-types {
-      display: flex;
-      padding: 30rpx 0;
-      
-      .type-item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        position: relative;
-        
-        image {
-          width: 60rpx;
-          height: 60rpx;
-          margin-bottom: 10rpx;
-        }
-        
-        text {
-          font-size: 24rpx;
-          color: #333;
-        }
-        
-        .badge {
-          position: absolute;
-          top: -10rpx;
-          right: 50%;
-          transform: translateX(20rpx);
-          background: #f00;
-          color: #fff;
-          font-size: 20rpx;
-          padding: 0 10rpx;
-          border-radius: 20rpx;
-          min-width: 30rpx;
-          height: 30rpx;
-          line-height: 30rpx;
-          text-align: center;
-        }
-      }
+    .arrow {
+      font-size: 28rpx;
+      color: #999;
     }
   }
   
-  .function-list {
+  .menu-list {
     background: #fff;
     
-    .function-item {
+    .menu-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 20rpx 30rpx;
-      border-bottom: 1px solid #eee;
+      justify-content: space-between;
+      padding: 32rpx;
+      border-bottom: 1rpx solid #f5f5f5;
       
-      .left {
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      .menu-left {
         display: flex;
         align-items: center;
-        height: 44rpx;
         
-        image {
+        .menu-icon {
           width: 40rpx;
           height: 40rpx;
           margin-right: 20rpx;
         }
         
-        text {
-          font-size: 32rpx;
-          font-weight: bold;
-          line-height: 44rpx;
-          height: 44rpx;
+        .menu-name {
+          font-size: 28rpx;
+          color: #333;
         }
       }
       
       .arrow {
         font-size: 28rpx;
         color: #999;
-        line-height: 44rpx;
-        height: 44rpx;
+      }
+      
+      &:active {
+        background: #f9f9f9;
+      }
+      
+      .count {
+        font-size: 24rpx;
+        color: #ff6b81;
+        margin-right: 10rpx;
       }
     }
   }

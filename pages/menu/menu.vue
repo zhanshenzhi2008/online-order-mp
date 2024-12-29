@@ -8,14 +8,17 @@
     </swiper>
     
     <!-- 门店信息 -->
-    <view class="store-info" v-if="storeInfo">
+    <view class="store-info" v-if="shopInfo">
       <view class="store-header">
-        <view class="store-left">
-          <text class="store-name">{{storeInfo.name}}</text>
+        <view class="store-left" @tap="goToShopList">
+          <view class="name-wrap">
+            <text class="store-name">{{shopInfo.name}}</text>
+            <text class="arrow">></text>
+          </view>
           <view class="store-data">
-            <text class="rating">★ {{storeInfo.rating}}</text>
+            <text class="rating">★ {{shopInfo.rating}}</text>
             <text class="divider">|</text>
-            <text class="monthly-sales">月售 {{storeInfo.monthlySales}}+</text>
+            <text class="monthly-sales">月售 {{shopInfo.monthlySales}}+</text>
           </view>
         </view>
         <view class="store-right">
@@ -31,11 +34,11 @@
               @tap="switchDeliveryType('delivery')"
             >外卖</view>
           </view>
-          <text class="distance">距您{{storeInfo.distance}}km</text>
+          <text class="distance">距您{{shopInfo.distance}}km</text>
         </view>
       </view>
       <view class="store-notice">
-        <text class="notice-text">{{storeInfo.notice}}</text>
+        <text class="notice-text">{{shopInfo.notice}}</text>
       </view>
     </view>
     
@@ -125,7 +128,7 @@ import { ref, nextTick, onMounted, provide, computed, watch } from 'vue'
 import CartBar from '@/components/cart-bar.vue'
 import foodItem from '@/components/food-item.vue'
 import { foodApi } from '@/utils/api'
-import { useStoreStore, useCartStore, useOrderStore, useMenuStore } from '@/stores'
+import { useShopStore, useCartStore, useOrderStore, useMenuStore } from '@/stores'
 import CartPopup from '@/components/cart-popup.vue'
 
 const categories = ref([])
@@ -135,12 +138,12 @@ const refreshing = ref(false)
 const scrollTop = ref(0)
 const categoryPositions = ref([])
 const cartBarRef = ref(null)
-const storeStore = useStoreStore()
+const shopStore = useShopStore()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
 const cartPopup = ref(null)
 const menuStore = useMenuStore()
-const storeInfo = ref(null)
+const shopInfo = ref(null)
 
 // 轮播图数据
 const banners = ref([
@@ -326,10 +329,17 @@ const goToPay = () => {
   }
 }
 
+// 跳转到门店列表
+const goToShopList = () => {
+  uni.navigateTo({
+    url: '/pages/shop/list'
+  })
+}
+
 onMounted(async () => {
   loadCategories()
-  // 获取店铺详情
-  storeInfo.value = await storeStore.fetchStoreDetail()
+  // 获取门店详情
+  shopInfo.value = await shopStore.fetchShopDetail()
 })
 </script>
 
@@ -441,16 +451,34 @@ onMounted(async () => {
     .store-left {
       flex: 1;
       margin-right: 24rpx;
+      position: relative;
+      padding-right: 30rpx;
       
-      .store-name {
-        font-size: 36rpx;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 12rpx;
-        display: block;
+      .name-wrap {
+        display: flex;
+        align-items: center;
+        line-height: 1;
+        
+        .store-name {
+          font-size: 32rpx;
+          font-weight: bold;
+          color: #333;
+          line-height: 1;
+        }
+        
+        .arrow {
+          font-size: 28rpx;
+          color: #666;
+          margin-left: 10rpx;
+          font-weight: bold;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+        }
       }
       
       .store-data {
+        margin-top: 8rpx;
         display: flex;
         align-items: center;
         font-size: 24rpx;
@@ -464,6 +492,10 @@ onMounted(async () => {
           margin: 0 12rpx;
           color: #eee;
         }
+      }
+
+      &:active {
+        opacity: 0.8;
       }
     }
     

@@ -4,6 +4,7 @@ import { orderApi } from './order'
 import { addressApi } from './address'
 import { foodApi } from './food'
 import { paymentApi } from './payment'
+import { shopApi } from './shop'
 
 // 统一导出所有 mock API
 export const mockApi = {
@@ -12,7 +13,8 @@ export const mockApi = {
   ...orderApi,
   ...addressApi,
   ...foodApi,
-  ...paymentApi
+  ...paymentApi,
+  ...shopApi
 }
 
 // 统一导出所有 mock 数据，方便其他模块直接使用
@@ -21,4 +23,5 @@ export * from './cart'
 export * from './order'
 export * from './address'
 export * from './food'
-export * from './payment' 
+export * from './payment'
+export * from './shop' 
