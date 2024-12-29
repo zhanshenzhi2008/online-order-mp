@@ -30,7 +30,7 @@
       >
         <image src="/static/images/pickup.png" mode="aspectFit"></image>
         <text>自提</text>
-        <text class="desc">提前下单门店自提</text>
+        <text class="desc" @click="goToMenu('selfPickup')">提前下单门店自提</text>
       </view>
       <view 
         class="mode-item takeout" 
@@ -39,7 +39,7 @@
       >
         <image src="/static/images/takeout.png" mode="aspectFit"></image>
         <text>外送</text>
-        <text class="desc">{{deliveryStore.estimatedTimeText}}</text>
+        <text class="desc" @click="goToMenu('delivery')">{{deliveryStore.estimatedTimeText}}</text>
         <text class="address-text" v-if="deliveryMode === 'takeout' && addressStore.currentAddress">
           {{addressStore.formatAddress(addressStore.currentAddress)}}
         </text>
@@ -55,13 +55,15 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useDeliveryStore } from '@/stores/delivery'
-import { useAddressStore } from '@/stores/address'
+import { useDeliveryStore } from '@/stores'
+import { useAddressStore } from '@/stores'
+import { useMenuStore } from '@/stores'
 
 const searchText = ref('')
 const deliveryMode = ref('takeout') // 默认外卖模式
 const deliveryStore = useDeliveryStore()
 const addressStore = useAddressStore()
+const menuStore = useMenuStore()
 
 const banners = ref([
   { 
@@ -77,6 +79,18 @@ const banners = ref([
 // 选择配送方式
 const selectMode = (mode) => {
   deliveryMode.value = mode
+  // 根据选择的模式跳转到点餐页面
+  goToMenu(mode === 'pickup' ? 'selfPickup' : 'delivery')
+}
+
+// 跳转到点餐页面
+const goToMenu = (type) => {
+  // 使用 Pinia store 来存储配送方式
+  menuStore.setDeliveryType(type)
+  
+  uni.switchTab({
+    url: '/pages/menu/menu'
+  })
 }
 
 </script>

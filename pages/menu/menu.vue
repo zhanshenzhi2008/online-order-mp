@@ -8,34 +8,34 @@
     </swiper>
     
     <!-- 门店信息 -->
-    <view class="store-info">
+    <view class="store-info" v-if="storeInfo">
       <view class="store-header">
         <view class="store-left">
-          <text class="store-name">{{storeStore.currentStore.name}}</text>
+          <text class="store-name">{{storeInfo.name}}</text>
           <view class="store-data">
-            <text class="rating">★ {{storeStore.currentStore.rating}}</text>
+            <text class="rating">★ {{storeInfo.rating}}</text>
             <text class="divider">|</text>
-            <text class="monthly-sales">月售 {{storeStore.currentStore.monthlySales}}+</text>
+            <text class="monthly-sales">月售 {{storeInfo.monthlySales}}+</text>
           </view>
         </view>
         <view class="store-right">
           <view class="status-tags">
-            <text 
+            <view 
               class="status-tag" 
               :class="{ active: deliveryType === 'selfPickup' }"
-              @click="switchDeliveryType('selfPickup')"
-            >自取</text>
-            <text 
+              @tap="switchDeliveryType('selfPickup')"
+            >自提</view>
+            <view 
               class="status-tag" 
               :class="{ active: deliveryType === 'delivery' }"
-              @click="switchDeliveryType('delivery')"
-            >外卖</text>
+              @tap="switchDeliveryType('delivery')"
+            >外卖</view>
           </view>
-          <text class="distance">距您{{storeStore.currentStore.distance}}km</text>
+          <text class="distance">距您{{storeInfo.distance}}km</text>
         </view>
       </view>
       <view class="store-notice">
-        <text class="notice-text">{{storeStore.currentStore.notice}}</text>
+        <text class="notice-text">{{storeInfo.notice}}</text>
       </view>
     </view>
     
@@ -121,11 +121,11 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, provide, computed } from 'vue'
+import { ref, nextTick, onMounted, provide, computed, watch } from 'vue'
 import CartBar from '@/components/cart-bar.vue'
 import foodItem from '@/components/food-item.vue'
 import { foodApi } from '@/utils/api'
-import { useStoreStore, useCartStore, useOrderStore } from '@/stores'
+import { useStoreStore, useCartStore, useOrderStore, useMenuStore } from '@/stores'
 import CartPopup from '@/components/cart-popup.vue'
 
 const categories = ref([])
@@ -139,6 +139,8 @@ const storeStore = useStoreStore()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
 const cartPopup = ref(null)
+const menuStore = useMenuStore()
+const storeInfo = ref(null)
 
 // 轮播图数据
 const banners = ref([
@@ -148,11 +150,19 @@ const banners = ref([
 ])
 
 // 配送方式
-const deliveryType = ref('selfPickup') // 默认自取
+const deliveryType = ref(menuStore.deliveryType) // 从 store 获取初始值
+
+// 监听 menuStore 中配送方式的变化
+watch(() => menuStore.deliveryType, (newType) => {
+  if (newType !== deliveryType.value) {
+    deliveryType.value = newType
+  }
+})
 
 // 切换配送方式
 const switchDeliveryType = (type) => {
-  deliveryType.value = type
+  if (deliveryType.value === type) return
+  
   // 如果购物车不为空，提示用户
   if (cartTotal.value > 0) {
     uni.showModal({
@@ -161,11 +171,14 @@ const switchDeliveryType = (type) => {
       success: (res) => {
         if (res.confirm) {
           cartStore.clearCart() // 清空购物车
-        } else {
-          deliveryType.value = type === 'selfPickup' ? 'delivery' : 'selfPickup' // 恢复原来的选择
+          deliveryType.value = type
+          menuStore.setDeliveryType(type) // 同步到 store
         }
       }
     })
+  } else {
+    deliveryType.value = type
+    menuStore.setDeliveryType(type) // 同步到 store
   }
 }
 
@@ -313,9 +326,10 @@ const goToPay = () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadCategories()
-  storeStore.fetchStoreDetail() // 获取店铺详细信息
+  // 获取店铺详情
+  storeInfo.value = await storeStore.fetchStoreDetail()
 })
 </script>
 

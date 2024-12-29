@@ -16,7 +16,7 @@
           :class="{ active: order.deliveryType === 'selfPickup' }"
           @click="switchDeliveryType('selfPickup')"
         >
-          <text class="option-name">到店自取</text>
+          <text class="option-name">到店自提</text>
           <view class="sub-options" v-if="order.deliveryType === 'selfPickup'">
             <text 
               class="sub-option"
@@ -156,9 +156,9 @@ const packagingFee = 2.00
 
 // 计算总金额
 const totalAmount = computed(() => {
-  if (!order.value) return 0
+  if (!order.value || !order.value.goodsAmount) return '0.00'
   
-  let total = Number(order.value.goodsAmount || 0)
+  let total = Number(order.value.goodsAmount)
   
   // 外卖需要加配送费和打包费
   if (order.value && order.value.deliveryType === 'delivery') {
@@ -174,25 +174,17 @@ const totalAmount = computed(() => {
 
 // 切换配送方式
 const switchDeliveryType = async (type) => {
-  if (!order.value) return
+  if (!order.value || order.value.deliveryType === type) return
   
   order.value.deliveryType = type
   // 切换到外卖时，检查是否有地址
-  if (type === 'delivery') {
-    if (!selectedAddress.value) {
-      // 获取默认地址
-      const defaultAddress = await addressStore.getDefaultAddress()
-      if (defaultAddress) {
-        selectedAddress.value = defaultAddress
-        order.value.address = defaultAddress
-      } else {
-        // 如果没有默认地址，跳转到地址选择
-        selectAddress()
-      }
+  if (type === 'delivery' && !selectedAddress.value) {
+    const defaultAddress = await addressStore.getDefaultAddress()
+    if (defaultAddress) {
+      selectedAddress.value = defaultAddress
+      order.value.address = defaultAddress
     }
   }
-  // 重新计算总金额
-  order.value.totalAmount = totalAmount.value
 }
 
 // 切换自取类型
@@ -225,14 +217,16 @@ const selectAddress = () => {
 }
 
 // 监听配送方式变化
-watch(() => order.value && order.value.deliveryType, (newType) => {
+watch(() => order.value && order.value.deliveryType, (newType, oldType) => {
+  if (newType === oldType) return // 避免重复触发
+  
   if (newType === 'delivery' && !selectedAddress.value) {
     uni.showToast({
       title: '请选择配送地址',
       icon: 'none'
     })
   }
-})
+}, { deep: false }) // 不需要深度监听
 
 // 选择支付方式
 const selectPayment = (method) => {
@@ -370,44 +364,54 @@ const handlePayError = (error) => {
   uni.hideLoading()
   uni.showToast({
     title: error.message || '支付失败',
-    icon: 'none'
+    icon: 'none',
+    success: () => {
+      // 不清空订单信息，让用户可以重试支付
+      setTimeout(() => {
+        // 返回上一页
+        uni.navigateBack()
+      }, 1500)
+    }
   })
 }
 
 onMounted(async () => {
   // 获取订单信息
   order.value = orderStore.currentOrder
-  if (order.value) {
-    // 保存商品金额
-    order.value.goodsAmount = order.value.totalAmount
-    // 如果是外卖，获取默认地址
-    if (order.value.deliveryType === 'delivery') {
-      const defaultAddress = await addressStore.getDefaultAddress()
-      if (defaultAddress) {
-        selectedAddress.value = defaultAddress
-        order.value.address = defaultAddress
-        // 如果地址有打包设置，更新订单的打包状态
-        if (defaultAddress.needPackaging !== undefined) {
-          order.value.needPackaging = defaultAddress.needPackaging
-        }
-      }
-    }
-  } else {
+  if (!order.value) {
     uni.showToast({
       title: '订单信息不存在',
       icon: 'none',
       success: () => {
         setTimeout(() => {
-          uni.navigateBack()
+          // 返回到点餐页面
+          uni.switchTab({
+            url: '/pages/menu/menu'
+          })
         }, 1500)
       }
     })
+    return
   }
 
-  // 获取支付方式列表
-  const payRes = await paymentApi.getPaymentMethods()
-  if (payRes.code === 0) {
-    paymentMethods.value = payRes.data
+  // 保存商品金额
+  order.value.goodsAmount = order.value.totalAmount
+
+  // 如果是外卖，获取默认地址
+  if (order.value.deliveryType === 'delivery') {
+    const defaultAddress = await addressStore.getDefaultAddress()
+    if (defaultAddress) {
+      selectedAddress.value = defaultAddress
+      order.value.address = defaultAddress
+    }
+  }
+
+  // 只在首次加载时获取支付方式列表
+  if (!paymentMethods.value.length) {
+    const payRes = await paymentApi.getPaymentMethods()
+    if (payRes.code === 0) {
+      paymentMethods.value = payRes.data
+    }
   }
 })
 </script>
