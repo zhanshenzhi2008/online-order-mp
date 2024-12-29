@@ -308,7 +308,7 @@ const goToPay = () => {
     orderStore.setCurrentOrder(order)
     
     uni.navigateTo({
-      url: '/pages/order/pay'
+      url: '/pages/order/confirm'
     })
   }
 }

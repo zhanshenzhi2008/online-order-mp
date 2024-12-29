@@ -110,10 +110,28 @@
       </view>
     </view>
     
+    <!-- 支付方式 -->
+    <view class="payment-methods">
+      <view class="section-title">支付方式</view>
+      <view class="method-list">
+        <view 
+          class="method-item"
+          v-for="method in paymentMethods"
+          :key="method.id"
+          :class="{ active: selectedPayment === method.id }"
+          @click="selectPayment(method)"
+        >
+          <image :src="method.icon" class="method-icon" mode="aspectFit"></image>
+          <text class="method-name">{{ method.name }}</text>
+          <text class="check-icon" v-if="selectedPayment === method.id">✓</text>
+        </view>
+      </view>
+    </view>
+    
     <!-- 支付按钮 -->
     <view class="pay-action">
       <button class="pay-button" @click="handlePay">
-        确认支付 ￥{{ totalAmount }}
+        {{ selectedPayment === 'wxpay' ? '微信支付' : '支付宝支付' }} ￥{{ totalAmount }}
       </button>
     </view>
   </view>
@@ -122,12 +140,15 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useOrderStore, useAddressStore } from '@/stores'
+import { paymentApi } from '@/utils/api'
 
 const orderStore = useOrderStore()
 const addressStore = useAddressStore()
 const order = ref(null)
 const pickupType = ref('dineIn')
 const selectedAddress = ref(null)
+const paymentMethods = ref([])
+const selectedPayment = ref('wxpay') // 默认微信支付
 
 // 配送费和打包费的固定值
 const deliveryFee = 5.00
@@ -213,6 +234,146 @@ watch(() => order.value && order.value.deliveryType, (newType) => {
   }
 })
 
+// 选择支付方式
+const selectPayment = (method) => {
+  selectedPayment.value = method.id
+}
+
+// 处理支付
+const handlePay = async () => {
+  if (!order.value) return
+  
+  // 外卖必须选择地址
+  if (order.value.deliveryType === 'delivery' && !selectedAddress.value) {
+    uni.showToast({
+      title: '请选择配送地址',
+      icon: 'none'
+    })
+    return
+  }
+
+  uni.showLoading({
+    title: '支付中...'
+  })
+  
+  try {
+    // 创建支付订单
+    const payRes = await paymentApi.createPayment({
+      orderId: order.value.id,
+      paymentMethod: selectedPayment.value,
+      amount: totalAmount.value,
+      subject: '淄博烧烤订单',
+      body: order.value.goods.map(item => item.name).join(','),
+      deliveryType: order.value.deliveryType,
+      address: selectedAddress.value,
+      pickupType: pickupType.value
+    })
+
+    if (payRes.code === 0) {
+      // 根据支付方式调用不同的支付
+      if (selectedPayment.value === 'wxpay') {
+        // 调用微信支付
+        const wxRes = await paymentApi.wxPay(payRes.data)
+        if (wxRes.code === 0) {
+          // #ifdef MP-WEIXIN
+          uni.pay({
+            ...wxRes.data,
+            success: () => handlePaySuccess(),
+            fail: (err) => handlePayError(err)
+          })
+          // #endif
+          
+          // #ifdef APP-PLUS
+          uni.getProvider({
+            service: 'payment',
+            success: function (res) {
+              if (res.provider.indexOf('wxpay') > -1) {
+                uni.payWithWeixin({
+                  ...wxRes.data,
+                  success: () => handlePaySuccess(),
+                  fail: (err) => handlePayError(err)
+                })
+              } else {
+                handlePayError(new Error('当前环境不支持微信支付'))
+              }
+            }
+          })
+          // #endif
+          
+          // #ifdef H5
+          window.location.href = wxRes.data.mweb_url
+          // #endif
+        } else {
+          handlePayError(new Error(wxRes.message))
+        }
+      } else if (selectedPayment.value === 'alipay') {
+        // 调用支付宝支付
+        const aliRes = await paymentApi.aliPay(payRes.data)
+        if (aliRes.code === 0) {
+          // #ifdef APP-PLUS
+          uni.getProvider({
+            service: 'payment',
+            success: function (res) {
+              if (res.provider.indexOf('alipay') > -1) {
+                uni.payWithAlipay({
+                  orderInfo: aliRes.data.orderString,
+                  success: () => handlePaySuccess(),
+                  fail: (err) => handlePayError(err)
+                })
+              } else {
+                handlePayError(new Error('当前环境不支持支付宝支付'))
+              }
+            }
+          })
+          // #endif
+          
+          // #ifdef H5
+          const div = document.createElement('div')
+          div.innerHTML = aliRes.data.form
+          document.body.appendChild(div)
+          document.forms[0].submit()
+          // #endif
+        } else {
+          handlePayError(new Error(aliRes.message))
+        }
+      }
+    } else {
+      handlePayError(new Error(payRes.message))
+    }
+  } catch (error) {
+    handlePayError(error)
+  }
+}
+
+// 支付成功处理
+const handlePaySuccess = () => {
+  uni.hideLoading()
+  uni.showToast({
+    title: '支付成功',
+    icon: 'success',
+    duration: 2000,
+    success: () => {
+      // 清空购物车和当前订单
+      orderStore.clearCurrentOrder()
+      // 跳转到订单列表页
+      setTimeout(() => {
+        uni.switchTab({
+          url: '/pages/order/index'
+        })
+      }, 2000)
+    }
+  })
+}
+
+// 支付失败处理
+const handlePayError = (error) => {
+  uni.hideLoading()
+  uni.showToast({
+    title: error.message || '支付失败',
+    icon: 'none'
+  })
+}
+
 onMounted(async () => {
   // 获取订单信息
   order.value = orderStore.currentOrder
@@ -242,45 +403,13 @@ onMounted(async () => {
       }
     })
   }
-})
 
-// 处理支付
-const handlePay = () => {
-  if (!order.value) return
-  
-  // 外卖必须选择地址
-  if (order.value.deliveryType === 'delivery' && !selectedAddress.value) {
-    uni.showToast({
-      title: '请选择配送地址',
-      icon: 'none'
-    })
-    return
+  // 获取支付方式列表
+  const payRes = await paymentApi.getPaymentMethods()
+  if (payRes.code === 0) {
+    paymentMethods.value = payRes.data
   }
-
-  uni.showLoading({
-    title: '支付中...'
-  })
-  
-  // 模拟支付过程
-  setTimeout(() => {
-    uni.hideLoading()
-    uni.showToast({
-      title: '支付成功',
-      icon: 'success',
-      duration: 2000,
-      success: () => {
-        // 清空购物车和当前订单
-        orderStore.clearCurrentOrder()
-        // 跳转到订单列表页
-        setTimeout(() => {
-          uni.switchTab({
-            url: '/pages/order/index'
-          })
-        }, 2000)
-      }
-    })
-  }, 1500)
-}
+})
 </script>
 
 <style lang="scss" scoped>
@@ -508,6 +637,55 @@ const handlePay = () => {
         font-size: 36rpx;
         font-weight: bold;
         color: #ff6b81;
+      }
+    }
+  }
+  
+  .payment-methods {
+    background: #fff;
+    border-radius: 12rpx;
+    padding: 30rpx;
+    margin-bottom: 20rpx;
+
+    .section-title {
+      font-size: 32rpx;
+      font-weight: bold;
+      margin-bottom: 20rpx;
+    }
+
+    .method-list {
+      .method-item {
+        display: flex;
+        align-items: center;
+        padding: 20rpx 0;
+        border-bottom: 1rpx solid #eee;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &.active {
+          .method-name {
+            color: #ff6b81;
+          }
+        }
+
+        .method-icon {
+          width: 48rpx;
+          height: 48rpx;
+          margin-right: 20rpx;
+        }
+
+        .method-name {
+          flex: 1;
+          font-size: 28rpx;
+          color: #333;
+        }
+
+        .check-icon {
+          font-size: 32rpx;
+          color: #ff6b81;
+        }
       }
     }
   }

@@ -62,9 +62,23 @@
       }
     },
     {
-      "path": "pages/order/pay",
+      "path": "pages/order/confirm",
       "style": {
-        "navigationBarTitleText": "订单支付",
+        "navigationBarTitleText": "订单确认",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/payment/index",
+      "style": {
+        "navigationBarTitleText": "收银台",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/payment/result",
+      "style": {
+        "navigationBarTitleText": "支付结果",
         "enablePullDownRefresh": false
       }
     }
