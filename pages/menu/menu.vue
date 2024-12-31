@@ -310,23 +310,12 @@ const onCartUpdate = () => {
 
 // 去支付
 const goToPay = () => {
-  if (cartTotal.value > 0) {
-    // 创建订单对象
-    const order = {
-      goods: cartList.value,
-      totalAmount: cartAmount.value,
-      deliveryType: deliveryType.value,
-      createTime: new Date().toISOString(),
-      status: '待支付'
-    }
-    
-    // 先设置订单信息，再跳转
-    orderStore.setCurrentOrder(order)
-    
-    uni.navigateTo({
-      url: '/pages/order/confirm'
-    })
-  }
+  if (cartTotal.value <= 0) return
+  
+  // 将配送方式和购物车数据传递到订单确认页
+  uni.navigateTo({
+    url: `/pages/order/confirm?deliveryType=${deliveryType.value}`
+  })
 }
 
 // 跳转到门店列表

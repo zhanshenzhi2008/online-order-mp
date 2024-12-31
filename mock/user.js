@@ -58,5 +58,39 @@ export const userApi = {
       return { code: 0, data: user, message: '更新成功' }
     }
     return { code: 1, message: '用户不存在' }
+  },
+
+  // 上传头像
+  'user/upload/avatar': (req) => {
+    return {
+      code: 0,
+      data: {
+        url: 'https://example.com/avatar.jpg' // 模拟返回的头像URL
+      },
+      message: 'success'
+    }
+  },
+
+  // 获取用户设置
+  'user/settings': () => {
+    return {
+      code: 0,
+      data: {
+        orderNotification: true,
+        promotionNotification: true,
+        systemNotification: true,
+        locationAccess: true
+      },
+      message: 'success'
+    }
+  },
+
+  // 更新用户设置
+  'user/settings/update': (data) => {
+    return {
+      code: 0,
+      data: data,
+      message: 'success'
+    }
   }
 } 

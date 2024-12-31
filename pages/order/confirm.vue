@@ -1,719 +1,543 @@
 <template>
-  <view class="pay-container" v-if="order">
-    <!-- 配送方式选择 -->
-    <view class="delivery-select">
-      <view class="section-title">取餐方式</view>
-      <view class="delivery-options">
+  <view class="confirm-container">
+    <!-- 配送方式 -->
+    <view class="delivery-info">
+      <text class="label">配送方式</text>
+      <view class="delivery-switch">
         <view 
-          class="delivery-option" 
-          :class="{ active: order.deliveryType === 'delivery' }"
-          @click="switchDeliveryType('delivery')"
-        >
-          <text class="option-name">外卖配送</text>
-        </view>
+          class="switch-item" 
+          :class="{ active: deliveryType === 'selfPickup' }"
+          @tap="switchDeliveryType('selfPickup')"
+        >到店自取</view>
         <view 
-          class="delivery-option" 
-          :class="{ active: order.deliveryType === 'selfPickup' }"
-          @click="switchDeliveryType('selfPickup')"
-        >
-          <text class="option-name">到店自提</text>
-          <view class="sub-options" v-if="order.deliveryType === 'selfPickup'">
-            <text 
-              class="sub-option"
-              :class="{ active: pickupType === 'dineIn' }"
-              @click.stop="switchPickupType('dineIn')"
-            >堂食</text>
-            <text 
-              class="sub-option"
-              :class="{ active: pickupType === 'takeout' }"
-              @click.stop="switchPickupType('takeout')"
-            >打包</text>
-          </view>
-        </view>
+          class="switch-item" 
+          :class="{ active: deliveryType === 'delivery' }"
+          @tap="switchDeliveryType('delivery')"
+        >外卖配送</view>
       </view>
     </view>
 
-    <!-- 配送地址，外卖时显示 -->
-    <view 
-      class="delivery-address" 
-      v-if="order.deliveryType === 'delivery'"
-      @click="selectAddress"
-    >
-      <view v-if="selectedAddress" class="address-info">
-        <view class="address-header">
-          <text class="name">{{ selectedAddress.name }}</text>
-          <text class="phone">{{ selectedAddress.phone }}</text>
-        </view>
-        <view class="address-detail">
-          {{ selectedAddress.province }}{{ selectedAddress.city }}{{ selectedAddress.district }}{{ selectedAddress.detail }}
-        </view>
+    <!-- 自取方式选择 -->
+    <view class="pickup-type" v-if="deliveryType === 'selfPickup'">
+      <text class="label">就餐方式</text>
+      <view class="type-switch">
+        <view 
+          class="switch-item" 
+          :class="{ active: pickupType === 'dineIn' }"
+          @tap="pickupType = 'dineIn'"
+        >堂食</view>
+        <view 
+          class="switch-item" 
+          :class="{ active: pickupType === 'takeout' }"
+          @tap="pickupType = 'takeout'"
+        >打包</view>
       </view>
-      <view v-else class="no-address">
-        <text>请选择配送地址</text>
-      </view>
+    </view>
+
+    <!-- 收货地址 -->
+    <view class="address-card" v-if="deliveryType === 'delivery'" @tap="goToAddress">
+      <block v-if="selectedAddress">
+        <view class="address-info">
+          <view class="user-info">
+            <text class="name">{{ selectedAddress.name }}</text>
+            <text class="phone">{{ selectedAddress.phone }}</text>
+          </view>
+          <view class="address">{{ selectedAddress.address }}</view>
+        </view>
+      </block>
+      <block v-else>
+        <view class="no-address">
+          <text>请选择收货地址</text>
+        </view>
+      </block>
       <text class="arrow">></text>
+    </view>
+
+    <!-- 商品列表 -->
+    <view class="goods-list">
+      <view class="goods-item" v-for="item in cartList" :key="item.id">
+        <image class="goods-image" :src="item.image" mode="aspectFill"></image>
+        <view class="goods-info">
+          <text class="goods-name">{{ item.name }}</text>
+          <view class="goods-bottom">
+            <text class="goods-price">￥{{ item.price }}</text>
+            <text class="goods-quantity">x{{ item.quantity }}</text>
+          </view>
+        </view>
+      </view>
     </view>
 
     <!-- 订单信息 -->
     <view class="order-info">
-      <view class="order-header">
-        <text class="title">订单信息</text>
-        <text class="type">({{ order.deliveryType === 'selfPickup' ? '自取' : '外卖' }})</text>
+      <view class="info-item">
+        <text class="label">商品金额</text>
+        <text class="value">￥{{ totalAmount }}</text>
       </view>
       
-      <!-- 商品列表 -->
-      <view class="goods-list">
-        <view 
-          class="goods-item"
-          v-for="item in order.goods"
-          :key="item.id"
-        >
-          <image 
-            :src="item.image" 
-            class="goods-image"
-            mode="aspectFill"
-          ></image>
-          <view class="goods-info">
-            <text class="goods-name">{{ item.name }}</text>
-            <view class="goods-price-wrap">
-              <text class="goods-price">￥{{ item.price }}</text>
-              <text class="goods-quantity">x{{ item.quantity }}</text>
-            </view>
-          </view>
-        </view>
+      <!-- 配送费 -->
+      <view class="info-item" v-if="deliveryType === 'delivery'">
+        <text class="label">配送费</text>
+        <text class="value">￥{{ deliveryFee }}</text>
       </view>
       
-      <!-- 费用明细 -->
-      <view class="fee-details">
-        <view class="fee-item">
-          <text>商品金额</text>
-          <text class="fee">￥{{ order.goodsAmount }}</text>
-        </view>
-        
-        <!-- 配送费，仅外卖时显示 -->
-        <view class="fee-item" v-if="order.deliveryType === 'delivery'">
-          <text>配送费</text>
-          <text class="fee">￥{{ deliveryFee }}</text>
-        </view>
-        
-        <!-- 打包费，外卖或自取打包时显示 -->
-        <view class="fee-item" v-if="order.deliveryType === 'delivery' || (order.deliveryType === 'selfPickup' && pickupType === 'takeout')">
-          <text>打包费</text>
-          <text class="fee">￥{{ packagingFee }}</text>
-        </view>
+      <!-- 打包费 -->
+      <view class="info-item" v-if="needPackagingFee">
+        <text class="label">打包费</text>
+        <text class="value">￥{{ packagingFee }}</text>
       </view>
       
-      <!-- 订单金额 -->
-      <view class="order-amount">
-        <text>合计</text>
-        <text class="amount">￥{{ totalAmount }}</text>
+      <view class="info-item total">
+        <text class="label">合计</text>
+        <text class="value">￥{{ finalAmount }}</text>
       </view>
     </view>
-    
-    <!-- 支付方式 -->
-    <view class="payment-methods">
-      <view class="section-title">支付方式</view>
-      <view class="method-list">
-        <view 
-          class="method-item"
-          v-for="method in paymentMethods"
-          :key="method.id"
-          :class="{ active: selectedPayment === method.id }"
-          @click="selectPayment(method)"
-        >
-          <image :src="method.icon" class="method-icon" mode="aspectFit"></image>
-          <text class="method-name">{{ method.name }}</text>
-          <text class="check-icon" v-if="selectedPayment === method.id">✓</text>
-        </view>
-      </view>
+
+    <!-- 备注 -->
+    <view class="remark-section">
+      <text class="label">备注</text>
+      <input 
+        class="remark-input" 
+        type="text" 
+        v-model="remark" 
+        placeholder="请输入备注信息"
+      />
     </view>
-    
-    <!-- 支付按钮 -->
-    <view class="pay-action">
-      <button class="pay-button" @click="handlePay">
-        {{ selectedPayment === 'wxpay' ? '微信支付' : '支付宝支付' }} ￥{{ totalAmount }}
-      </button>
+
+    <!-- 底部支付按钮 -->
+    <view class="bottom-bar">
+      <view class="price-section">
+        <text class="price-label">实付金额：</text>
+        <text class="price-value">￥{{ finalAmount }}</text>
+      </view>
+      <button class="pay-button" @tap="submitOrder">提交订单</button>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useOrderStore, useAddressStore } from '@/stores'
-import { paymentApi } from '@/utils/api'
+import { ref, computed, onMounted } from 'vue'
+import { useCartStore, useAddressStore, useOrderStore } from '@/stores'
 
-const orderStore = useOrderStore()
+const cartStore = useCartStore()
 const addressStore = useAddressStore()
-const order = ref(null)
-const pickupType = ref('dineIn')
+const orderStore = useOrderStore()
+
+const deliveryType = ref('delivery')
 const selectedAddress = ref(null)
-const paymentMethods = ref([])
-const selectedPayment = ref('wxpay') // 默认微信支付
+const remark = ref('')
+const deliveryFee = ref(5)
+const packagingFee = ref(2)
+const cartList = ref([])
+const pickupType = ref('dineIn')
 
-// 配送费和打包费的固定值
-const deliveryFee = 5.00
-const packagingFee = 2.00
-
-// 计算总金额
+// 计算商品总金额
 const totalAmount = computed(() => {
-  if (!order.value || !order.value.goodsAmount) return '0.00'
-  
-  let total = Number(order.value.goodsAmount)
-  
-  // 外卖需要加配送费和打包费
-  if (order.value && order.value.deliveryType === 'delivery') {
-    total += deliveryFee + packagingFee
-  }
-  // 自取且打包需要加打包费
-  else if (order.value && order.value.deliveryType === 'selfPickup' && pickupType.value === 'takeout') {
-    total += packagingFee
-  }
-  
-  return total.toFixed(2)
+  return cartList.value.reduce((total, item) => total + item.price * item.quantity, 0)
 })
+
+// 计算是否需要打包费
+const needPackagingFee = computed(() => {
+  return deliveryType.value === 'delivery' || 
+    (deliveryType.value === 'selfPickup' && pickupType.value === 'takeout')
+})
+
+// 计算最终支付金额
+const finalAmount = computed(() => {
+  let amount = totalAmount.value
+  // 如果是外卖，加配送费
+  if (deliveryType.value === 'delivery') {
+    amount += deliveryFee.value
+  }
+  // 如果需要打包，加打包费
+  if (needPackagingFee.value) {
+    amount += packagingFee.value
+  }
+  return amount
+})
+
+// 初始化数据
+const initData = async (options = {}) => {
+  deliveryType.value = options.deliveryType || 'delivery'
+  cartList.value = cartStore.cartList
+  
+  // 如果是外卖配送，获取默认地址
+  if (deliveryType.value === 'delivery') {
+    const defaultAddr = await addressStore.getDefaultAddress()
+    if (!selectedAddress.value) {
+      selectedAddress.value = defaultAddr
+    }
+  }
+}
+
+// 跳转到地址选择
+const goToAddress = () => {
+  if (deliveryType.value !== 'delivery') return
+  
+  uni.navigateTo({
+    url: '/pages/address/list?from=order',
+    success: () => {
+      // 监听页面返回事件
+      uni.$once('addressSelected', (address) => {
+        selectedAddress.value = address
+      })
+    }
+  })
+}
 
 // 切换配送方式
-const switchDeliveryType = async (type) => {
-  if (!order.value || order.value.deliveryType === type) return
+const switchDeliveryType = (type) => {
+  if (deliveryType.value === type) return
   
-  order.value.deliveryType = type
-  // 切换到外卖时，检查是否有地址
-  if (type === 'delivery' && !selectedAddress.value) {
-    const defaultAddress = await addressStore.getDefaultAddress()
-    if (defaultAddress) {
-      selectedAddress.value = defaultAddress
-      order.value.address = defaultAddress
-    }
-  }
-}
-
-// 切换自取类型
-const switchPickupType = (type) => {
-  if (!order.value) return
-  
-  pickupType.value = type
-  // 重新计算总金额
-  order.value.totalAmount = totalAmount.value
-}
-
-// 选择地址
-const selectAddress = () => {
-  uni.navigateTo({
-    url: '/pages/address/list?select=true',
-    events: {
-      // 监听地址选择事件
-      addressSelected: (address) => {
-        selectedAddress.value = address
-        if (order.value) {
-          order.value.address = address
-          // 如果地址有打包设置，更新订单的打包状态
-          if (address.needPackaging !== undefined) {
-            order.value.needPackaging = address.needPackaging
+  uni.showModal({
+    title: '切换配送方式',
+    content: '切换配送方式可能会影响配送费用，是否继续？',
+    success: async (res) => {
+      if (res.confirm) {
+        deliveryType.value = type
+        if (type === 'delivery') {
+          const defaultAddr = await addressStore.getDefaultAddress()
+          if (!selectedAddress.value) {
+            selectedAddress.value = defaultAddr
           }
+        } else {
+          selectedAddress.value = null
         }
       }
     }
   })
 }
 
-// 监听配送方式变化
-watch(() => order.value && order.value.deliveryType, (newType, oldType) => {
-  if (newType === oldType) return // 避免重复触发
-  
-  if (newType === 'delivery' && !selectedAddress.value) {
-    uni.showToast({
-      title: '请选择配送地址',
-      icon: 'none'
-    })
-  }
-}, { deep: false }) // 不需要深度监听
+// 页面加载时初始化数据
+onMounted(() => {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  initData(currentPage.options)
+})
 
-// 选择支付方式
-const selectPayment = (method) => {
-  selectedPayment.value = method.id
-}
-
-// 处理支付
-const handlePay = async () => {
-  if (!order.value) return
-  
-  // 外卖必须选择地址
-  if (order.value.deliveryType === 'delivery' && !selectedAddress.value) {
+// 提交订单
+const submitOrder = async () => {
+  if (deliveryType.value === 'delivery' && !selectedAddress.value) {
     uni.showToast({
-      title: '请选择配送地址',
+      title: '请选择收货地址',
       icon: 'none'
     })
     return
   }
 
-  uni.showLoading({
-    title: '支付中...'
-  })
-  
   try {
-    // 创建支付订单
-    const payRes = await paymentApi.createPayment({
-      orderId: order.value.id,
-      paymentMethod: selectedPayment.value,
-      amount: totalAmount.value,
-      subject: '淄博烧烤订单',
-      body: order.value.goods.map(item => item.name).join(','),
-      deliveryType: order.value.deliveryType,
+    const orderData = {
+      goods: cartList.value,
+      totalAmount: totalAmount.value,
+      finalAmount: finalAmount.value,
+      deliveryType: deliveryType.value,
+      pickupType: deliveryType.value === 'selfPickup' ? pickupType.value : null, // 添加自取方式
+      deliveryFee: deliveryType.value === 'delivery' ? deliveryFee.value : 0,
       address: selectedAddress.value,
-      pickupType: pickupType.value
-    })
+      remark: remark.value,
+      createTime: new Date().toISOString(),
+      status: '待支付'
+    }
 
-    if (payRes.code === 0) {
-      // 根据支付方式调用不同的支付
-      if (selectedPayment.value === 'wxpay') {
-        // 调用微信支付
-        const wxRes = await paymentApi.wxPay(payRes.data)
-        if (wxRes.code === 0) {
-          // #ifdef MP-WEIXIN
-          uni.pay({
-            ...wxRes.data,
-            success: () => handlePaySuccess(),
-            fail: (err) => handlePayError(err)
-          })
-          // #endif
-          
-          // #ifdef APP-PLUS
-          uni.getProvider({
-            service: 'payment',
-            success: function (res) {
-              if (res.provider.indexOf('wxpay') > -1) {
-                uni.payWithWeixin({
-                  ...wxRes.data,
-                  success: () => handlePaySuccess(),
-                  fail: (err) => handlePayError(err)
-                })
-              } else {
-                handlePayError(new Error('当前环境不支持微信支付'))
-              }
-            }
-          })
-          // #endif
-          
-          // #ifdef H5
-          window.location.href = wxRes.data.mweb_url
-          // #endif
-        } else {
-          handlePayError(new Error(wxRes.message))
-        }
-      } else if (selectedPayment.value === 'alipay') {
-        // 调用支付宝支付
-        const aliRes = await paymentApi.aliPay(payRes.data)
-        if (aliRes.code === 0) {
-          // #ifdef APP-PLUS
-          uni.getProvider({
-            service: 'payment',
-            success: function (res) {
-              if (res.provider.indexOf('alipay') > -1) {
-                uni.payWithAlipay({
-                  orderInfo: aliRes.data.orderString,
-                  success: () => handlePaySuccess(),
-                  fail: (err) => handlePayError(err)
-                })
-              } else {
-                handlePayError(new Error('当前环境不支持支付宝支付'))
-              }
-            }
-          })
-          // #endif
-          
-          // #ifdef H5
-          const div = document.createElement('div')
-          div.innerHTML = aliRes.data.form
-          document.body.appendChild(div)
-          document.forms[0].submit()
-          // #endif
-        } else {
-          handlePayError(new Error(aliRes.message))
-        }
-      }
+    const res = await orderStore.createOrder(orderData)
+    if (res.success) {
+      cartStore.clearCart()
+      uni.redirectTo({
+        url: `/pages/pay/pay?orderId=${res.data.id}`
+      })
     } else {
-      handlePayError(new Error(payRes.message))
+      throw new Error(res.message)
     }
   } catch (error) {
-    handlePayError(error)
-  }
-}
-
-// 支付成功处理
-const handlePaySuccess = () => {
-  uni.hideLoading()
-  uni.showToast({
-    title: '支付成功',
-    icon: 'success',
-    duration: 2000,
-    success: () => {
-      // 清空购物车和当前订单
-      orderStore.clearCurrentOrder()
-      // 跳转到订单列表页
-      setTimeout(() => {
-        uni.switchTab({
-          url: '/pages/order/index'
-        })
-      }, 2000)
-    }
-  })
-}
-
-// 支付失败处理
-const handlePayError = (error) => {
-  uni.hideLoading()
-  uni.showToast({
-    title: error.message || '支付失败',
-    icon: 'none',
-    success: () => {
-      // 不清空订单信息，让用户可以重试支付
-      setTimeout(() => {
-        // 返回上一页
-        uni.navigateBack()
-      }, 1500)
-    }
-  })
-}
-
-onMounted(async () => {
-  // 获取订单信息
-  order.value = orderStore.currentOrder
-  if (!order.value) {
     uni.showToast({
-      title: '订单信息不存在',
-      icon: 'none',
-      success: () => {
-        setTimeout(() => {
-          // 返回到点餐页面
-          uni.switchTab({
-            url: '/pages/menu/menu'
-          })
-        }, 1500)
-      }
+      title: error.message || '创建订单失败',
+      icon: 'none'
     })
-    return
   }
-
-  // 保存商品金额
-  order.value.goodsAmount = order.value.totalAmount
-
-  // 如果是外卖，获取默认地址
-  if (order.value.deliveryType === 'delivery') {
-    const defaultAddress = await addressStore.getDefaultAddress()
-    if (defaultAddress) {
-      selectedAddress.value = defaultAddress
-      order.value.address = defaultAddress
-    }
-  }
-
-  // 只在首次加载时获取支付方式列表
-  if (!paymentMethods.value.length) {
-    const payRes = await paymentApi.getPaymentMethods()
-    if (payRes.code === 0) {
-      paymentMethods.value = payRes.data
-    }
-  }
-})
+}
 </script>
 
-<style lang="scss" scoped>
-.pay-container {
+<style lang="scss">
+.confirm-container {
   min-height: 100vh;
   background: #f5f5f5;
-  padding: 20rpx;
+  padding-bottom: 120rpx;
+}
+
+.delivery-info {
+  background: #fff;
+  padding: 30rpx;
+  margin-top: 20rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   
-  .delivery-select {
-    background: #fff;
-    border-radius: 12rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
-
-    .section-title {
-      font-size: 32rpx;
-      font-weight: bold;
-      margin-bottom: 20rpx;
-    }
-
-    .delivery-options {
-      display: flex;
-      gap: 20rpx;
-
-      .delivery-option {
-        flex: 1;
-        height: 88rpx;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #f5f5f5;
-        border-radius: 12rpx;
-        position: relative;
-        transition: all 0.3s;
-
-        &.active {
-          background: #91683d;
-          color: #fff;
-        }
-
-        .option-name {
-          font-size: 28rpx;
-        }
-
-        .sub-options {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: -80rpx;
-          background: #fff;
-          padding: 20rpx;
-          border-radius: 12rpx;
-          box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-          display: flex;
-          gap: 20rpx;
-          z-index: 1;
-
-          .sub-option {
-            flex: 1;
-            height: 60rpx;
-            line-height: 60rpx;
-            text-align: center;
-            background: #f5f5f5;
-            border-radius: 8rpx;
-            font-size: 26rpx;
-            color: #666;
-
-            &.active {
-              background: #91683d;
-              color: #fff;
-            }
-          }
-        }
-      }
-    }
+  .label {
+    font-size: 28rpx;
+    color: #333;
   }
   
-  .delivery-address {
-    background: #fff;
-    border-radius: 12rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
+  .delivery-switch {
     display: flex;
-    align-items: center;
+    background: #f5f5f5;
+    border-radius: 32rpx;
+    padding: 4rpx;
     
-    .address-info {
-      flex: 1;
+    .switch-item {
+      padding: 8rpx 24rpx;
+      font-size: 24rpx;
+      color: #666;
+      border-radius: 28rpx;
+      transition: all 0.3s;
       
-      .address-header {
-        margin-bottom: 12rpx;
-        
-        .name {
-          font-size: 28rpx;
-          font-weight: bold;
-          margin-right: 20rpx;
-        }
-        
-        .phone {
-          font-size: 26rpx;
-          color: #666;
-        }
+      &.active {
+        background: #91683d;
+        color: #fff;
       }
       
-      .address-detail {
-        font-size: 26rpx;
-        color: #333;
-        line-height: 1.4;
+      &:active {
+        opacity: 0.8;
       }
-    }
-    
-    .no-address {
-      flex: 1;
-      font-size: 28rpx;
-      color: #999;
-    }
-    
-    .arrow {
-      font-size: 32rpx;
-      color: #999;
-      margin-left: 20rpx;
-    }
-    
-    &:active {
-      opacity: 0.8;
     }
   }
+}
+
+.address-card {
+  background: #fff;
+  padding: 30rpx;
+  margin-top: 20rpx;
+  display: flex;
+  align-items: flex-start;
   
-  .order-info {
-    background: #fff;
-    border-radius: 12rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
+  .address-info {
+    flex: 1;
+    margin-right: 20rpx;
+    min-width: 0;
     
-    .order-header {
+    .user-info {
+      margin-bottom: 10rpx;
       display: flex;
       align-items: center;
-      margin-bottom: 30rpx;
       
-      .title {
-        font-size: 32rpx;
+      .name {
+        font-size: 28rpx;
+        color: #333;
+        margin-right: 20rpx;
         font-weight: bold;
       }
       
-      .type {
-        font-size: 24rpx;
+      .phone {
+        font-size: 28rpx;
         color: #666;
-        margin-left: 12rpx;
       }
     }
     
-    .goods-list {
-      .goods-item {
-        display: flex;
-        padding: 20rpx 0;
-        border-bottom: 1rpx solid #eee;
-        
-        .goods-image {
-          width: 120rpx;
-          height: 120rpx;
-          border-radius: 8rpx;
-          margin-right: 20rpx;
-        }
-        
-        .goods-info {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          
-          .goods-name {
-            font-size: 28rpx;
-            color: #333;
-          }
-          
-          .goods-price-wrap {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            
-            .goods-price {
-              font-size: 28rpx;
-              color: #ff6b81;
-            }
-            
-            .goods-quantity {
-              font-size: 24rpx;
-              color: #999;
-            }
-          }
-        }
-      }
+    .address {
+      font-size: 26rpx;
+      color: #666;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+  }
+  
+  .no-address {
+    flex: 1;
+    font-size: 28rpx;
+    color: #999;
+  }
+  
+  .arrow {
+    margin-left: 20rpx;
+    color: #999;
+    font-size: 24rpx;
+    flex-shrink: 0;
+  }
+}
+
+.goods-list {
+  background: #fff;
+  margin-top: 20rpx;
+  padding: 0 30rpx;
+  
+  .goods-item {
+    display: flex;
+    padding: 30rpx 0;
+    border-bottom: 1rpx solid #f5f5f5;
+    
+    &:last-child {
+      border-bottom: none;
     }
     
-    .fee-details {
-      padding: 20rpx 0;
-      border-top: 1rpx solid #eee;
+    .goods-image {
+      width: 120rpx;
+      height: 120rpx;
+      border-radius: 8rpx;
+      margin-right: 20rpx;
+    }
+    
+    .goods-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       
-      .fee-item {
+      .goods-name {
+        font-size: 28rpx;
+        color: #333;
+      }
+      
+      .goods-bottom {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16rpx;
-        font-size: 26rpx;
-        color: #666;
         
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
-        .fee {
-          color: #333;
-        }
-      }
-    }
-    
-    .order-amount {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 30rpx;
-      font-size: 28rpx;
-      
-      .amount {
-        font-size: 36rpx;
-        font-weight: bold;
-        color: #ff6b81;
-      }
-    }
-  }
-  
-  .payment-methods {
-    background: #fff;
-    border-radius: 12rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
-
-    .section-title {
-      font-size: 32rpx;
-      font-weight: bold;
-      margin-bottom: 20rpx;
-    }
-
-    .method-list {
-      .method-item {
-        display: flex;
-        align-items: center;
-        padding: 20rpx 0;
-        border-bottom: 1rpx solid #eee;
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        &.active {
-          .method-name {
-            color: #ff6b81;
-          }
-        }
-
-        .method-icon {
-          width: 48rpx;
-          height: 48rpx;
-          margin-right: 20rpx;
-        }
-
-        .method-name {
-          flex: 1;
-          font-size: 28rpx;
-          color: #333;
-        }
-
-        .check-icon {
+        .goods-price {
           font-size: 32rpx;
           color: #ff6b81;
+          font-weight: bold;
+        }
+        
+        .goods-quantity {
+          font-size: 26rpx;
+          color: #999;
         }
       }
     }
   }
+}
+
+.order-info {
+  background: #fff;
+  margin-top: 20rpx;
+  padding: 30rpx;
   
-  .pay-action {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 20rpx 30rpx;
-    padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
-    padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-    background: #fff;
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
     
-    .pay-button {
-      width: 100%;
-      height: 88rpx;
-      line-height: 88rpx;
-      text-align: center;
-      background: #ff6b81;
-      color: #fff;
-      border-radius: 44rpx;
-      font-size: 32rpx;
-      border: none;
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    &.total {
+      padding-top: 20rpx;
+      border-top: 1rpx solid #f5f5f5;
+      
+      .label, .value {
+        font-weight: bold;
+        color: #333;
+      }
+    }
+    
+    .label {
+      font-size: 28rpx;
+      color: #666;
+    }
+    
+    .value {
+      font-size: 28rpx;
+      color: #333;
+    }
+  }
+}
+
+.remark-section {
+  background: #fff;
+  margin-top: 20rpx;
+  padding: 30rpx;
+  
+  .label {
+    font-size: 28rpx;
+    color: #333;
+    margin-bottom: 20rpx;
+    display: block;
+  }
+  
+  .remark-input {
+    width: 100%;
+    height: 80rpx;
+    background: #f5f5f5;
+    border-radius: 8rpx;
+    padding: 0 20rpx;
+    font-size: 28rpx;
+  }
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 30rpx;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  
+  .price-section {
+    flex: 1;
+    
+    .price-label {
+      font-size: 28rpx;
+      color: #333;
+    }
+    
+    .price-value {
+      font-size: 36rpx;
+      color: #ff6b81;
+      font-weight: bold;
+    }
+  }
+  
+  .pay-button {
+    width: 240rpx;
+    height: 80rpx;
+    line-height: 80rpx;
+    background: #ff6b81;
+    color: #fff;
+    font-size: 32rpx;
+    border-radius: 40rpx;
+    text-align: center;
+    margin: 0;
+    
+    &:active {
+      opacity: 0.9;
+    }
+  }
+}
+
+.pickup-type {
+  background: #fff;
+  padding: 30rpx;
+  margin-top: 20rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  .label {
+    font-size: 28rpx;
+    color: #333;
+  }
+  
+  .type-switch {
+    display: flex;
+    background: #f5f5f5;
+    border-radius: 32rpx;
+    padding: 4rpx;
+    
+    .switch-item {
+      padding: 8rpx 24rpx;
+      font-size: 24rpx;
+      color: #666;
+      border-radius: 28rpx;
+      transition: all 0.3s;
+      
+      &.active {
+        background: #91683d;
+        color: #fff;
+      }
       
       &:active {
         opacity: 0.8;

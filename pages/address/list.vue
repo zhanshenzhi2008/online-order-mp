@@ -5,7 +5,7 @@
       <view class="address-item" 
             v-for="address in addressList" 
             :key="address.id"
-            @click="handleAddressClick(address)">
+            @click="selectAddress(address)">
         <view class="info">
           <view class="user">
             <text class="name">{{address.name}}</text>
@@ -31,7 +31,7 @@
       <image src="/static/images/empty-address.png"></image>
       <text>暂无收货地址</text>
     </view>
-    
+
     <!-- 底部按钮 -->
     <view class="bottom-button">
       <button class="add-button" @click="addAddress">新增地址</button>
@@ -45,25 +45,19 @@ import { useAddressStore } from '@/stores'
 
 const addressStore = useAddressStore()
 const addressList = ref([])
-const isSelectMode = ref(false)
+const fromPage = ref('')
 
-// 处理地址点击
-const handleAddressClick = (address) => {
-  if (isSelectMode.value) {
-    // 选择模式下，选中地址并返回
-    const pages = getCurrentPages()
-    const prevPage = pages[pages.length - 2]
-    if (prevPage && prevPage.$vm) {
-      // 获取上一页的事件通道
-      const eventChannel = prevPage.$vm.getOpenerEventChannel()
-      // 触发地址选择事件
-      eventChannel.emit('addressSelected', address)
-    }
-    // 返回上一页
+// 获取地址列表
+const getAddressList = async () => {
+  addressList.value = await addressStore.getAddressList()
+}
+
+// 选择地址
+const selectAddress = (address) => {
+  if (fromPage.value === 'order') {
+    // 使用全局事件触发选中事件
+    uni.$emit('addressSelected', address)
     uni.navigateBack()
-  } else {
-    // 普通模式下，进入编辑页面
-    editAddress(address)
   }
 }
 
@@ -102,13 +96,12 @@ const loadAddressList = async () => {
 
 // 页面加载
 onMounted(() => {
-  // 获取页面参数，判断是否是选择模式
+  getAddressList()
+  
+  // 获取页面参数
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  isSelectMode.value = currentPage && currentPage.options && currentPage.options.select === 'true'
-  
-  // 加载地址列表
-  loadAddressList()
+  fromPage.value = currentPage.options.from || ''
 })
 
 // 定义页面生命周期方法
@@ -123,15 +116,19 @@ defineExpose({
 .address-list {
   min-height: 100vh;
   background: #f5f5f5;
-  padding: 20rpx;
   padding-bottom: 120rpx;
   
   .list {
+    margin-top: 20rpx;
+    
     .address-item {
       background: #fff;
-      border-radius: 12rpx;
-      padding: 30rpx;
       margin-bottom: 20rpx;
+      padding: 30rpx;
+      
+      &:active {
+        background: #f9f9f9;
+      }
       
       .info {
         .user {
@@ -139,6 +136,7 @@ defineExpose({
           
           .name {
             font-size: 32rpx;
+            color: #333;
             font-weight: bold;
             margin-right: 20rpx;
           }
@@ -146,33 +144,33 @@ defineExpose({
           .phone {
             font-size: 28rpx;
             color: #666;
-            margin-right: 20rpx;
           }
           
           .tag {
             font-size: 24rpx;
-            color: #f00;
-            border: 1rpx solid #f00;
-            padding: 2rpx 10rpx;
-            border-radius: 4rpx;
+            color: #ff6b81;
+            border: 1rpx solid #ff6b81;
+            padding: 2rpx 12rpx;
+            border-radius: 16rpx;
+            margin-left: 16rpx;
           }
         }
         
         .address-line {
           display: flex;
-          align-items: flex-start;
           justify-content: space-between;
+          align-items: flex-start;
           
           .address {
             flex: 1;
             font-size: 28rpx;
-            color: #333;
+            color: #666;
             line-height: 1.4;
             margin-right: 20rpx;
             
             .label {
-              color: #f00;
-              margin-right: 10rpx;
+              color: #ff6b81;
+              margin-right: 8rpx;
             }
           }
           
@@ -181,16 +179,24 @@ defineExpose({
             align-items: center;
             
             .icon {
-              font-size: 32rpx;
-              padding: 10rpx;
-              margin-left: 20rpx;
+              width: 60rpx;
+              height: 60rpx;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 36rpx;
+              color: #999;
               
               &.edit {
-                color: #f44336;
+                color: #666;
               }
               
               &.delete {
-                color: #666;
+                color: #ff6b81;
+              }
+              
+              &:active {
+                opacity: 0.7;
               }
             }
           }
@@ -200,7 +206,7 @@ defineExpose({
   }
   
   .empty {
-    padding: 100rpx 0;
+    padding-top: 200rpx;
     text-align: center;
     
     image {
@@ -216,35 +222,27 @@ defineExpose({
   }
   
   .bottom-button {
-    // #ifdef H5
     position: fixed;
-    left: 50%;
-    bottom: 40rpx;
-    transform: translateX(-50%);
-    width: clamp(200px, 90%, 400px);
-    // #endif
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 20rpx 30rpx;
+    background: #fff;
+    box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
     
-    // #ifndef H5
-    position: fixed;
-    left: 40rpx;
-    right: 40rpx;
-    bottom: 40rpx;
-    // #endif
-    
-    height: 88rpx;
-    line-height: 88rpx;
-    text-align: center;
-    background: #f00;
-    color: #fff;
-    font-size: 32rpx;
-    border-radius: 44rpx;
-  }
-}
-
-// 选择模式下的样式调整
-.address-item {
-  &:active {
-    opacity: 0.8;
+    .add-button {
+      width: 100%;
+      height: 80rpx;
+      line-height: 80rpx;
+      background: #ff6b81;
+      color: #fff;
+      font-size: 32rpx;
+      border-radius: 40rpx;
+      
+      &:active {
+        opacity: 0.9;
+      }
+    }
   }
 }
 </style> 

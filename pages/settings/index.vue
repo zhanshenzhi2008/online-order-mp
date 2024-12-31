@@ -4,24 +4,18 @@
     <view class="settings-section">
       <view class="section-title">账号信息</view>
       <view class="settings-list">
-        <view class="settings-item" @tap="navigateTo('/pages/settings/profile')">
+        <view class="settings-item" @tap="goToProfile">
           <text class="item-label">个人资料</text>
           <view class="item-right">
             <text class="item-value">{{ userInfo.nickname || '未设置' }}</text>
-            <text class="iconfont icon-right">></text>
+            <text class="arrow">></text>
           </view>
         </view>
         <view class="settings-item" @tap="navigateTo('/pages/settings/phone')">
           <text class="item-label">手机号码</text>
           <view class="item-right">
             <text class="item-value">{{ formatPhone(userInfo.phone) }}</text>
-            <text class="iconfont icon-right">></text>
-          </view>
-        </view>
-        <view class="settings-item" @tap="navigateTo('/pages/address/list')">
-          <text class="item-label">收货地址</text>
-          <view class="item-right">
-            <text class="iconfont icon-right">></text>
+            <text class="arrow">></text>
           </view>
         </view>
       </view>
@@ -36,7 +30,7 @@
           <switch 
             :checked="settings.orderNotification"
             @change="updateSetting('orderNotification', $event.detail.value)"
-            color="#ff0000"
+            color="#ff6b81"
           />
         </view>
         <view class="settings-item">
@@ -44,7 +38,7 @@
           <switch 
             :checked="settings.promotionNotification"
             @change="updateSetting('promotionNotification', $event.detail.value)"
-            color="#ff0000"
+            color="#ff6b81"
           />
         </view>
         <view class="settings-item">
@@ -52,7 +46,7 @@
           <switch 
             :checked="settings.systemNotification"
             @change="updateSetting('systemNotification', $event.detail.value)"
-            color="#ff0000"
+            color="#ff6b81"
           />
         </view>
       </view>
@@ -67,19 +61,19 @@
           <switch 
             :checked="settings.locationAccess"
             @change="updateSetting('locationAccess', $event.detail.value)"
-            color="#ff0000"
+            color="#ff6b81"
           />
         </view>
         <view class="settings-item" @tap="navigateTo('/pages/privacy/index')">
           <text class="item-label">隐私政策</text>
           <view class="item-right">
-            <text class="iconfont icon-right">></text>
+            <text class="arrow">></text>
           </view>
         </view>
         <view class="settings-item" @tap="navigateTo('/pages/agreement/index')">
           <text class="item-label">用户协议</text>
           <view class="item-right">
-            <text class="iconfont icon-right">></text>
+            <text class="arrow">></text>
           </view>
         </view>
       </view>
@@ -93,7 +87,7 @@
           <text class="item-label">清除缓存</text>
           <view class="item-right">
             <text class="item-value">{{ cacheSize }}</text>
-            <text class="iconfont icon-right">></text>
+            <text class="arrow">></text>
           </view>
         </view>
         <view class="settings-item">
@@ -136,6 +130,13 @@ const formatPhone = (phone) => {
 // 页面跳转
 const navigateTo = (url) => {
   uni.navigateTo({ url })
+}
+
+// 跳转到个人资料页
+const goToProfile = () => {
+  uni.navigateTo({
+    url: '/pages/settings/profile'
+  })
 }
 
 // 更新设置
@@ -270,7 +271,7 @@ onMounted(async () => {
         margin-right: 10rpx;
       }
 
-      .icon-right {
+      .arrow {
         color: #999;
         font-size: 24rpx;
       }
@@ -287,7 +288,7 @@ onMounted(async () => {
     line-height: 88rpx;
     text-align: center;
     background-color: #fff;
-    color: #ff0000;
+    color: #ff6b81;
     border-radius: 44rpx;
     font-size: 32rpx;
   }

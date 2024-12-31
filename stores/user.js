@@ -1,84 +1,55 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 import { userApi } from '@/utils/api'
 
-export const useUserStore = defineStore('user', {
-  state: () => ({
-    token: uni.getStorageSync('token') || '',
-    userInfo: null,
-    loading: false,
-    error: null
-  }),
+export const useUserStore = defineStore('user', () => {
+  const userInfo = ref(null)
+  const settings = ref({
+    orderNotification: true,
+    promotionNotification: true,
+    systemNotification: true,
+    locationAccess: true
+  })
 
-  getters: {
-    isLoggedIn: (state) => !!state.token
-  },
+  // 更新用户信息
+  const updateUserInfo = (info) => {
+    userInfo.value = info
+  }
 
-  actions: {
-    setToken(token) {
-      this.token = token
-      if (token) {
-        uni.setStorageSync('token', token)
-      } else {
-        uni.removeStorageSync('token')
+  // 获取用户设置
+  const getSettings = async () => {
+    try {
+      const res = await userApi.getSettings()
+      if (res.code === 0) {
+        settings.value = { ...settings.value, ...res.data }
       }
-    },
-
-    async login(data) {
-      this.loading = true
-      this.error = null
-      try {
-        const res = await userApi.login(data)
-        if (res.code === 0) {
-          this.setToken(res.data.token)
-          this.userInfo = res.data
-          return { success: true }
-        } else {
-          throw new Error(res.message || '登录失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async getUserInfo() {
-      if (!this.token) return
-      
-      this.loading = true
-      this.error = null
-      try {
-        const res = await userApi.getUserInfo()
-        if (res.code === 0) {
-          this.userInfo = res.data
-          return { success: true }
-        } else {
-          throw new Error(res.message || '获取用户信息失败')
-        }
-      } catch (error) {
-        this.error = error.message
-        if (error.message.includes('401')) {
-          this.logout()
-        }
-        return {
-          success: false,
-          message: error.message
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    logout() {
-      this.setToken('')
-      this.userInfo = null
-      uni.reLaunch({
-        url: '/pages/login/login'
-      })
+      return settings.value
+    } catch (error) {
+      console.error('获取设置失败:', error)
+      return settings.value
     }
+  }
+
+  // 更新用户设置
+  const updateSettings = async (newSettings) => {
+    try {
+      const res = await userApi.updateSettings(newSettings)
+      if (res.code === 0) {
+        settings.value = { ...settings.value, ...newSettings }
+        return true
+      }
+      throw new Error(res.message || '更新设置失败')
+    } catch (error) {
+      console.error('更新设置失败:', error)
+      throw error
+    }
+  }
+
+  return {
+    userInfo,
+    settings,
+    updateUserInfo,
+    getSettings,
+    updateSettings
   }
 }) 

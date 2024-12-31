@@ -2,12 +2,19 @@
   <view class="mine-container">
     <!-- 用户信息区域 -->
     <view class="user-info" @tap="goToLogin">
-      <view class="avatar-wrap">
+      <view class="avatar-wrap" @tap.stop="chooseAvatar">
         <image 
           class="avatar" 
-          :src="userInfo && userInfo.avatar ? userInfo.avatar : '/static/images/default-avatar.png'" 
+          :src="userInfo && userInfo.avatar ? userInfo.avatar : '/static/images/mine/default-avatar.png'" 
           mode="aspectFill"
         ></image>
+        <view class="upload-mask">
+          <image 
+            class="upload-icon" 
+            src="/static/images/mine/camera.png" 
+            mode="aspectFit"
+          ></image>
+        </view>
       </view>
       <view class="info-content">
         <text class="nickname">{{ userInfo && userInfo.nickname ? userInfo.nickname : '点击登录' }}</text>
@@ -17,38 +24,38 @@
     </view>
 
     <!-- 功能列表 -->
-    <view class="menu-list">
-      <view class="menu-item" @tap="goToAddress">
-        <view class="menu-left">
-          <image class="menu-icon" src="/static/images/mine/address.png"></image>
-          <text class="menu-name">收货地址</text>
+    <view class="menu-cards">
+      <view class="menu-card" @tap="goToAddress">
+        <view class="card-content">
+          <image class="card-icon" src="/static/images/mine/address.png"></image>
+          <text class="card-name">收货地址</text>
+          <text class="card-desc">管理收货地址</text>
         </view>
-        <text class="arrow">></text>
       </view>
 
-      <view class="menu-item" @tap="goToCoupons">
-        <view class="menu-left">
-          <image class="menu-icon" src="/static/images/mine/coupon.png"></image>
-          <text class="menu-name">优惠券</text>
+      <view class="menu-card" @tap="goToCoupons">
+        <view class="card-content">
+          <image class="card-icon" src="/static/images/mine/coupon.png"></image>
+          <text class="card-name">优惠券</text>
+          <text class="card-desc" v-if="couponCount">{{ couponCount }}张可用</text>
+          <text class="card-desc" v-else>暂无可用</text>
         </view>
-        <text class="count" v-if="couponCount">{{ couponCount }}张可用</text>
-        <text class="arrow">></text>
       </view>
 
-      <view class="menu-item" @tap="goToInvoice">
-        <view class="menu-left">
-          <image class="menu-icon" src="/static/images/mine/invoice.png"></image>
-          <text class="menu-name">发票管理</text>
+      <view class="menu-card" @tap="goToInvoice">
+        <view class="card-content">
+          <image class="card-icon" src="/static/images/mine/invoice.png"></image>
+          <text class="card-name">发票管理</text>
+          <text class="card-desc">开具发票</text>
         </view>
-        <text class="arrow">></text>
       </view>
 
-      <view class="menu-item" @tap="goToSettings">
-        <view class="menu-left">
-          <image class="menu-icon" src="/static/images/mine/settings.png"></image>
-          <text class="menu-name">设置</text>
+      <view class="menu-card" @tap="goToSettings">
+        <view class="card-content">
+          <image class="card-icon" src="/static/images/mine/settings.png"></image>
+          <text class="card-name">设置</text>
+          <text class="card-desc">账号设置</text>
         </view>
-        <text class="arrow">></text>
       </view>
     </view>
   </view>
@@ -57,10 +64,55 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores'
+import { userApi } from '@/utils/api'
 
 const userStore = useUserStore()
 const userInfo = ref(null)
 const couponCount = ref(0) // 可用优惠券数量
+
+// 选择头像
+const chooseAvatar = async (e) => {
+  e.stopPropagation() // 阻止事件冒泡，避免触发登录
+  
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const tempFilePath = res.tempFilePaths[0]
+      
+      try {
+        uni.showLoading({
+          title: '上传中...',
+          mask: true
+        })
+        
+        const uploadRes = await userApi.uploadAvatar(tempFilePath)
+        if (uploadRes.code === 0) {
+          userInfo.value = {
+            ...userInfo.value,
+            avatar: uploadRes.data.url
+          }
+          userStore.updateUserInfo(userInfo.value)
+          
+          uni.showToast({
+            title: '上传成功',
+            icon: 'success'
+          })
+        } else {
+          throw new Error(uploadRes.message)
+        }
+      } catch (error) {
+        uni.showToast({
+          title: error.message || '上传失败',
+          icon: 'none'
+        })
+      } finally {
+        uni.hideLoading()
+      }
+    }
+  })
+}
 
 // 跳转到登录页
 const goToLogin = () => {
@@ -121,15 +173,40 @@ onMounted(() => {
     margin-bottom: 20rpx;
     
     .avatar-wrap {
+      position: relative;
       width: 120rpx;
       height: 120rpx;
       border-radius: 50%;
       overflow: hidden;
       margin-right: 24rpx;
+      background: #f5f5f5;
       
       .avatar {
         width: 100%;
         height: 100%;
+        background: #f5f5f5;
+      }
+      
+      .upload-mask {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 36rpx;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        .upload-icon {
+          width: 24rpx;
+          height: 24rpx;
+          display: block;
+        }
+      }
+      
+      &:active {
+        opacity: 0.8;
       }
     }
     
@@ -156,49 +233,57 @@ onMounted(() => {
     }
   }
   
-  .menu-list {
-    background: #fff;
+  .menu-cards {
+    padding: 20rpx;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20rpx;
     
-    .menu-item {
+    .menu-card {
+      background: #fff;
+      border-radius: 16rpx;
+      padding: 30rpx;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 32rpx;
-      border-bottom: 1rpx solid #f5f5f5;
+      position: relative;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+      min-height: 180rpx; // 设置最小高度
       
-      &:last-child {
-        border-bottom: none;
-      }
-      
-      .menu-left {
+      .card-content {
+        flex: 1;
         display: flex;
+        flex-direction: column;
         align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0; // 移除内边距
         
-        .menu-icon {
-          width: 40rpx;
-          height: 40rpx;
-          margin-right: 20rpx;
+        .card-icon {
+          width: 56rpx;
+          height: 56rpx;
+          margin-bottom: 16rpx;
         }
         
-        .menu-name {
+        .card-name {
           font-size: 28rpx;
           color: #333;
+          font-weight: bold;
+          margin-bottom: 8rpx;
         }
-      }
-      
-      .arrow {
-        font-size: 28rpx;
-        color: #999;
+        
+        .card-desc {
+          font-size: 24rpx;
+          color: #999;
+          
+          &.highlight {
+            color: #ff6b81;
+          }
+        }
       }
       
       &:active {
-        background: #f9f9f9;
-      }
-      
-      .count {
-        font-size: 24rpx;
-        color: #ff6b81;
-        margin-right: 10rpx;
+        transform: scale(0.98);
+        opacity: 0.9;
       }
     }
   }
