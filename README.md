@@ -89,7 +89,7 @@ yarn build:mp-weixin
 ```
 
 ## 目录结构
-
+```
 ├── src/                 # 源代码目录
 │   ├── api/            # API 接口定义
 │   ├── components/     # 公共组件
@@ -106,6 +106,7 @@ yarn build:mp-weixin
 ├── .gitignore         # Git 忽略文件
 ├── package.json       # 项目配置
 └── README.md          # 项目说明文档
+```
 
 ## 开发配置
 
