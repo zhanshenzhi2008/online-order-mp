@@ -90,8 +90,7 @@ yarn build:mp-weixin
 
 ## 目录结构
 ```
-├── src/                 # 源代码目录
-│   ├── api/            # API 接口定义
+├── src/                 # 源代码目录  uniapp默认框架没有这一层。该工程没有src这层
 │   ├── components/     # 公共组件
 │   ├── pages/          # 页面文件
 │   ├── static/         # 静态资源
