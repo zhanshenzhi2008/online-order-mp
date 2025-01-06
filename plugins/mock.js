@@ -10,8 +10,10 @@ export const mockPlugin = (mockApis) => {
         }
 
         const url = new URL(req.url, `http://${req.headers.host}`)
-        const path = url.pathname.replace('/api', '') // 移除 /api/ 前缀
-        const method = req.method
+        const path = url.pathname.replace(/^\/api/, '') // 使用正则只替换开头的 /api
+        const method = req.method.toUpperCase() // 转换为大写
+
+        console.log('[Mock] Request:', method, path) // 添加请求日志
 
         // 解析请求体
         let body = ''
@@ -24,13 +26,16 @@ export const mockPlugin = (mockApis) => {
             try {
               // 遍历所有 mock 接口定义
               for (const api of Object.values(mockApis)) {
-                if (Array.isArray(api)) {
-                  for (const item of api) {
-                    const [itemMethod, itemPath] = Object.keys(item)[0].split(' ')
-                    const apiPath = itemPath.slice(1) // 移除开头的 /
-                    
-                    if (path === apiPath && method === itemMethod) {
-                      const handler = item[`${itemMethod} ${itemPath}`]
+                // 检查是否是对象形式的 API 定义
+                if (typeof api === 'object' && !Array.isArray(api)) {
+                  for (const [key, handler] of Object.entries(api)) {
+                    const [itemMethod, itemPath] = key.split(' ')
+                    const apiPath = itemPath
+                    const normalizedItemMethod = itemMethod.toUpperCase() // 转换为大写
+
+                    console.log('[Mock] Checking:', normalizedItemMethod, apiPath, 'against:', method, path) // 添加匹配日志
+
+                    if (path === apiPath && method === normalizedItemMethod) {
                       const params = method === 'GET'
                         ? Object.fromEntries(url.searchParams)
                         : body ? JSON.parse(body) : {}
