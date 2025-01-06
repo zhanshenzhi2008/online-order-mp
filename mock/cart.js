@@ -1,81 +1,57 @@
-// 模拟购物车数据
-let cartData = []
+// 购物车数据
+export const carts = []
 
-// 导出 cartApi 对象
+// 购物车相关接口
 export const cartApi = {
-  // 获取购物车列表
-  'cart/list': () => {
-    return {
-      code: 0,
-      message: 'success',
-      data: cartData
-    }
-  },
-
-  // 添加菜品到购物车
-  'cart/add': (data) => {
-    const { food_id, quantity = 1 } = data
-    
-    // 查找是否已存在
-    const existItem = cartData.find(item => item.food_id === food_id)
+  // 添加到购物车
+  'POST /cart/add': (data) => {
+    const { foodId, quantity = 1, specs = [], additions = [] } = data
+    const existItem = carts.find(item => 
+      item.foodId === foodId && 
+      JSON.stringify(item.specs) === JSON.stringify(specs) &&
+      JSON.stringify(item.additions) === JSON.stringify(additions)
+    )
     
     if (existItem) {
       existItem.quantity += quantity
     } else {
-      cartData.push({
-        food_id,
-        quantity,
-        selected: true
+      carts.push({
+        id: Date.now().toString(),
+        ...data,
+        quantity
       })
     }
-
-    return {
-      code: 0,
-      message: 'success',
-      data: {
-        quantity: existItem ? existItem.quantity : quantity
-      }
-    }
+    return { code: 0, data: carts }
   },
 
-  // 减少菜品数量
-  'cart/decrease': (data) => {
-    const { food_id } = data
-    
-    const item = cartData.find(item => item.food_id === food_id)
-    
-    if (!item) {
-      return {
-        code: -1,
-        message: '菜品不存在'
-      }
+  // 更新购物车商品数量
+  'POST /cart/update': (data) => {
+    const { id, quantity } = data
+    const item = carts.find(item => item.id === id)
+    if (item) {
+      item.quantity = quantity
     }
+    return { code: 0, data: carts }
+  },
 
-    // 先保存要返回的数量
-    const newQuantity = item.quantity > 1 ? item.quantity - 1 : 0
-
-    if (item.quantity > 1) {
-      item.quantity--
-    } else {
-      // 数量为1时，从购物车移除
-      cartData = cartData.filter(i => i.food_id !== food_id)
+  // 删除购物车商品
+  'POST /cart/remove': (data) => {
+    const { id } = data
+    const index = carts.findIndex(item => item.id === id)
+    if (index > -1) {
+      carts.splice(index, 1)
     }
-
-    return {
-      code: 0,
-      message: 'success',
-      data: {
-        quantity: newQuantity
-      }
-    }
+    return { code: 0, data: carts }
   },
 
   // 清空购物车
-  'cart/clear': () => {
-    cartData = []
-    return {
-      code: 0,
-      message: 'success'
-    }
+  'POST /cart/clear': () => {
+    carts.length = 0
+    return { code: 0, data: carts }
+  },
+
+  // 获取购物车列表
+  'GET /cart/list': () => {
+    return { code: 0, data: carts }
   }
 } 

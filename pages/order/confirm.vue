@@ -109,7 +109,7 @@
         <text class="price-label">实付金额：</text>
         <text class="price-value">￥{{ finalAmount }}</text>
       </view>
-      <button class="pay-button" @tap="submitOrder">提交订单</button>
+      <button class="pay-button" @tap="submitOrder">立即支付</button>
     </view>
   </view>
 </template>

@@ -2,95 +2,76 @@
 export const users = [
   {
     id: '1',
-    phone: '13800138000',
-    password: '123456',
     nickname: '张三',
-    avatar: '/static/avatar/user1.png',
-    gender: 1,
-    birthday: '1990-01-01',
-    token: 'mock-token-1'
+    avatar: '/static/images/avatar.png',
+    phone: '13800138000',
+    settings: {
+      orderNotification: true,
+      promotionNotification: true,
+      systemNotification: true,
+      locationAccess: true
+    }
   }
 ]
 
 // 用户相关接口
 export const userApi = {
-  // 登录
-  'user/login': (data) => {
-    const user = users.find(u => u.phone === data.phone && u.password === data.password)
-    if (user) {
-      return { code: 0, data: { ...user, token: user.token }, message: '登录成功' }
+  // 用户登录
+  'POST /user/login': (data) => {
+    const { phone, code } = data
+    // 模拟验证码检查
+    if (code !== '123456') {
+      return { code: 1, message: '验证码错误' }
     }
-    return { code: 1, message: '手机号或密码错误' }
-  },
-
-  // 注册
-  'user/register': (data) => {
-    const existUser = users.find(u => u.phone === data.phone)
-    if (existUser) {
-      return { code: 1, message: '手机号已注册' }
+    let user = users.find(u => u.phone === phone)
+    if (!user) {
+      user = {
+        id: Date.now().toString(),
+        phone,
+        nickname: `用户${phone.slice(-4)}`,
+        avatar: '/static/images/avatar.png',
+        settings: {
+          orderNotification: true,
+          promotionNotification: true,
+          systemNotification: true,
+          locationAccess: true
+        }
+      }
+      users.push(user)
     }
-    
-    const newUser = {
-      id: Date.now().toString(),
-      phone: data.phone,
-      password: data.password,
-      nickname: data.nickname || `用户${data.phone.slice(-4)}`,
-      avatar: '/static/avatar/default.png',
-      gender: 0,
-      birthday: '',
-      token: `mock-token-${Date.now()}`
-    }
-    users.push(newUser)
-    return { code: 0, data: { ...newUser, token: newUser.token }, message: '注册成功' }
+    return { code: 0, data: user }
   },
 
   // 获取用户信息
-  'user/info': () => ({
-    code: 0,
-    data: users[0]
-  }),
-
-  // 更新用户信息
-  'user/update': (data) => {
-    const user = users.find(u => u.id === data.id)
-    if (user) {
-      Object.assign(user, data)
-      return { code: 0, data: user, message: '更新成功' }
-    }
-    return { code: 1, message: '用户不存在' }
+  'GET /user/info': () => {
+    return { code: 0, data: users[0] }
   },
 
-  // 上传头像
-  'user/upload/avatar': (req) => {
-    return {
-      code: 0,
-      data: {
-        url: 'https://example.com/avatar.jpg' // 模拟返回的头像URL
-      },
-      message: 'success'
-    }
+  // 更新用户信息
+  'POST /user/update': (data) => {
+    const user = users[0]
+    Object.assign(user, data)
+    return { code: 0, data: user }
   },
 
   // 获取用户设置
-  'user/settings': () => {
+  'GET /user/settings': () => {
     return {
       code: 0,
-      data: {
-        orderNotification: true,
-        promotionNotification: true,
-        systemNotification: true,
-        locationAccess: true
-      },
-      message: 'success'
+      data: users[0].settings
     }
   },
 
   // 更新用户设置
-  'user/settings/update': (data) => {
+  'POST /user/settings/update': (data) => {
+    const user = users[0]
+    user.settings = {
+      ...user.settings,
+      ...data
+    }
     return {
       code: 0,
-      data: data,
-      message: 'success'
+      data: user.settings
     }
   }
 } 

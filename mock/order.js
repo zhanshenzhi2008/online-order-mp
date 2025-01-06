@@ -102,7 +102,8 @@ export const orders = [
 
 // 订单相关接口
 export const orderApi = {
-  'order/create': (data) => {
+  // 创建订单
+  'POST /order/create': (data) => {
     const order = {
       id: Date.now().toString(),
       ...data,
@@ -111,47 +112,50 @@ export const orderApi = {
       createTime: new Date().toISOString(),
       payTime: null,
       paymentMethod: null,
-      totalCount: data.items.reduce((sum, item) => sum + item.quantity, 0),
-      actualTotal: data.total - (data.discount || 0)
+      totalCount: data.goods.reduce((sum, item) => sum + item.quantity, 0),
+      actualTotal: data.totalAmount + data.deliveryFee + (data.packagingFee || 0)
     }
     orders.unshift(order)
     return { code: 0, data: order }
   },
 
-  'order/list': (params) => {
+  // 获取订单列表
+  'GET /order/list': (params) => {
+    const { status } = params
     let orderList = [...orders]
-    if (params.status) {
-      orderList = orderList.filter(order => order.status === params.status)
+    if (status) {
+      orderList = orderList.filter(order => order.status === status)
     }
-    if (params.userId) {
-      orderList = orderList.filter(order => order.userId === params.userId)
-    }
-    // 添加状态文本
+    // 添加配送方式和就餐方式
     orderList = orderList.map(order => ({
       ...order,
-      statusText: getStatusText(order.status),
-      totalCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-      actualTotal: order.total - (order.discount || 0)
+      deliveryType: order.deliveryType || 'delivery',
+      pickupType: order.pickupType || 'takeout',
+      statusText: getStatusText(order.status)
     }))
     return { code: 0, data: orderList }
   },
 
-  'order/detail': (params) => {
-    const order = orders.find(o => o.id === params.id)
+  // 获取订单详情
+  'GET /order/detail': (params) => {
+    const { id } = params
+    const order = orders.find(o => o.id === id)
     if (order) {
-      const orderWithStatus = {
-        ...order,
-        statusText: getStatusText(order.status),
-        totalCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
-        actualTotal: order.total - (order.discount || 0)
+      return { 
+        code: 0, 
+        data: {
+          ...order,
+          statusText: getStatusText(order.status)
+        }
       }
-      return { code: 0, data: orderWithStatus }
     }
     return { code: 1, message: '订单不存在' }
   },
 
-  'order/cancel': (data) => {
-    const order = orders.find(o => o.id === data.id)
+  // 取消订单
+  'POST /order/cancel': (data) => {
+    const { id } = data
+    const order = orders.find(o => o.id === id)
     if (!order) {
       return { code: 1, message: '订单不存在' }
     }
@@ -164,8 +168,10 @@ export const orderApi = {
     return { code: 0, data: order }
   },
 
-  'order/pay': (data) => {
-    const order = orders.find(o => o.id === data.id)
+  // 支付订单
+  'POST /order/pay': (data) => {
+    const { id } = data
+    const order = orders.find(o => o.id === id)
     if (!order) {
       return { code: 1, message: '订单不存在' }
     }
@@ -188,8 +194,10 @@ export const orderApi = {
     }
   },
 
-  'order/confirm': (data) => {
-    const order = orders.find(o => o.id === data.id)
+  // 确认收货
+  'POST /order/confirm': (data) => {
+    const { id } = data
+    const order = orders.find(o => o.id === id)
     if (!order) {
       return { code: 1, message: '订单不存在' }
     }

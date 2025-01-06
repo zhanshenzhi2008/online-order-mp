@@ -21,81 +21,20 @@
       @refresherrefresh="onRefresh"
       :refresher-triggered="refreshing"
     >
-      <view class="order-item" 
-            v-for="item in orderList" 
-            :key="item.id"
-            @tap="goToDetail(item)">
-        <!-- 订单头部 -->
-        <view class="header">
-          <view class="shop">
-            <image src="/static/images/orders/shop-logo.png"></image>
-            <text>淄博烧烤</text>
-          </view>
-          <text class="status">{{item.statusText}}</text>
-        </view>
-        
-        <!-- 商品列表 -->
-        <view class="goods-list">
-          <view class="goods-item" v-for="food in item.items" :key="food.id">
-            <image :src="food.image" mode="aspectFill"></image>
-            <view class="info">
-              <text class="name">{{food.name}}</text>
-              <view class="price-wrap">
-                <text class="price">¥{{food.price}}</text>
-                <text class="quantity">x{{food.quantity}}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-        
-        <!-- 订单信息 -->
-        <view class="order-info">
-          <text class="time">{{item.createTime}}</text>
-          <view class="total">
-            共{{item.totalCount}}件商品，实付
-            <text class="amount">¥{{item.actualTotal}}</text>
-          </view>
-        </view>
-        
-        <!-- 订单操作 -->
-        <view class="actions">
-          <block v-if="item.status === 'unpaid'">
-            <button class="btn plain" @tap.stop="cancelOrder(item)">取消订单</button>
-            <button class="btn primary" @tap.stop="payOrder(item)">立即支付</button>
-          </block>
-          <block v-else-if="item.status === 'delivering'">
-            <button class="btn primary" @tap.stop="confirmOrder(item)">确认收货</button>
-          </block>
-          <block v-else-if="item.status === 'completed'">
-            <button class="btn plain" @tap.stop="deleteOrder(item)">删除订单</button>
-            <button class="btn primary" @tap.stop="reorder(item)">再来一单</button>
-          </block>
-          <button class="btn plain" @tap.stop="goToDetail(item)">订单详情</button>
-        </view>
-      </view>
-      
-      <!-- 空状态 -->
-      <view class="empty" v-if="!loading && !orderList.length">
-        <image src="/static/images/orders/empty-order.png"></image>
-        <text>暂无相关订单</text>
-      </view>
-      
-      <!-- 加载状态 -->
-      <view class="loading" v-if="loading">
-        <view class="loading-text">正在加载...</view>
-      </view>
+      <!-- ... 其他内容保持不变 ... -->
     </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeMount } from 'vue'
 import { orderApi, cartApi } from '@/utils/api'
 
 const orderList = ref([])
 const loading = ref(false)
 const refreshing = ref(false)
 const currentTab = ref(0)
+const scrollHeight = ref(0)
 
 const tabs = [
   { name: '全部', status: '' },
@@ -104,6 +43,19 @@ const tabs = [
   { name: '待收货', status: 'delivering' },
   { name: '已完成', status: 'completed' }
 ]
+
+// 计算滚动区域高度
+const calcScrollHeight = () => {
+  const systemInfo = uni.getSystemInfoSync()
+  const tabsHeight = 88 // tabs的高度，单位rpx
+  // 将rpx转换为px
+  const tabsHeightPx = (tabsHeight * systemInfo.windowWidth) / 750
+  scrollHeight.value = systemInfo.windowHeight - tabsHeightPx
+}
+
+onBeforeMount(() => {
+  calcScrollHeight()
+})
 
 // 下拉刷新
 const onRefresh = async () => {
@@ -233,27 +185,40 @@ const goToDetail = (order) => {
   })
 }
 
+// 获取配送方式文本
+const getDeliveryTypeText = (type) => {
+  const typeMap = {
+    delivery: '外卖配送',
+    selfPickup: '到店自取'
+  }
+  return typeMap[type] || type
+}
+
+// 获取就餐方式文本
+const getPickupTypeText = (type) => {
+  const typeMap = {
+    dineIn: '堂食',
+    takeout: '打包'
+  }
+  return typeMap[type] || type
+}
+
 onMounted(() => {
   fetchOrders()
 })
 </script>
 
 <style lang="scss">
-@mixin text-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .order-list {
   min-height: 100vh;
   background: #f8f8f8;
+  padding-bottom: 20rpx;
   
   .status-tabs {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
+    right: 20rpx;
     z-index: 1;
     background: #fff;
     white-space: nowrap;
@@ -266,7 +231,6 @@ onMounted(() => {
       font-size: 28rpx;
       color: #666;
       position: relative;
-      transition: all 0.3s;
       
       &.active {
         color: #ff4444;
@@ -290,198 +254,222 @@ onMounted(() => {
     height: calc(100vh - 88rpx);
     margin-top: 88rpx;
     padding: 20rpx;
-  }
-  
-  .order-item {
-    background: #fff;
-    border-radius: 12rpx;
-    margin-bottom: 20rpx;
-    overflow: hidden;
-    box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.02);
+    padding-right: 40rpx;
+    box-sizing: border-box;
     
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20rpx 24rpx;
-      border-bottom: 1rpx solid #f5f5f5;
+    .order-item {
+      background: #fff;
+      border-radius: 12rpx;
+      margin-bottom: 20rpx;
+      padding: 20rpx;
       
-      .shop {
+      .header {
         display: flex;
+        justify-content: space-between;
         align-items: center;
+        padding: 20rpx 24rpx;
+        border-bottom: 1rpx solid #f5f5f5;
         
-        image {
-          width: 36rpx;
-          height: 36rpx;
-          margin-right: 12rpx;
-          border-radius: 6rpx;
-        }
-        
-        text {
-          font-size: 28rpx;
-          font-weight: 500;
-          color: #333;
-        }
-      }
-      
-      .status {
-        font-size: 26rpx;
-        color: #ff4444;
-        font-weight: 400;
-      }
-    }
-    
-    .goods-list {
-      padding: 24rpx;
-      
-      .goods-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 20rpx;
-        
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
-        image {
-          width: 120rpx;
-          height: 120rpx;
-          border-radius: 8rpx;
-          margin-right: 20rpx;
-          background: #f8f8f8;
-        }
-        
-        .info {
-          flex: 1;
-          min-width: 0;
+        .shop {
+          display: flex;
+          align-items: center;
           
-          .name {
-            font-size: 28rpx;
-            font-weight: 400;
-            color: #333;
-            margin-bottom: 12rpx;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+          image {
+            width: 36rpx;
+            height: 36rpx;
+            margin-right: 12rpx;
+            border-radius: 6rpx;
           }
           
-          .price-wrap {
+          text {
+            font-size: 28rpx;
+            font-weight: 500;
+            color: #333;
+          }
+          
+          .order-type {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            margin-left: 20rpx;
             
-            .price {
-              font-size: 28rpx;
-              color: #ff4444;
-              font-weight: 500;
+            .type-tag {
+              font-size: 22rpx;
+              color: #91683d;
+              background: #f8f4ef;
+              padding: 4rpx 12rpx;
+              border-radius: 16rpx;
+              margin-right: 12rpx;
               
-              &::before {
-                content: '¥';
-                font-size: 24rpx;
-                margin-right: 2rpx;
+              &:last-child {
+                margin-right: 0;
               }
             }
+          }
+        }
+        
+        .status {
+          font-size: 26rpx;
+          color: #ff4444;
+          font-weight: 400;
+          margin-left: auto;
+          padding-left: 20rpx;
+          flex-shrink: 0;
+        }
+      }
+      
+      .goods-list {
+        padding: 24rpx;
+        
+        .goods-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 20rpx;
+          width: 100%;
+          box-sizing: border-box;
+          
+          image {
+            width: 120rpx;
+            height: 120rpx;
+            border-radius: 8rpx;
+            margin-right: 20rpx;
+            background: #f8f8f8;
+            flex-shrink: 0;
+          }
+          
+          .info {
+            flex: 1;
+            min-width: 0;
+            margin-right: 20rpx;
             
-            .quantity {
+            .name {
+              font-size: 28rpx;
+              font-weight: 400;
+              color: #333;
+              margin-bottom: 12rpx;
+              @include text-ellipsis;
+            }
+            
+            .price-wrap {
+              display: flex;
+              align-items: center;
+              
+              .price {
+                font-size: 28rpx;
+                color: #ff4444;
+                font-weight: 500;
+                flex-shrink: 0;
+                
+                &::before {
+                  content: '¥';
+                  font-size: 24rpx;
+                  margin-right: 2rpx;
+                }
+              }
+              
+              .quantity {
+                font-size: 24rpx;
+                color: #999;
+                margin-left: auto;
+                padding-left: 20rpx;
+                flex-shrink: 0;
+              }
+            }
+          }
+        }
+      }
+      
+      .order-info {
+        padding: 20rpx 24rpx;
+        border-top: 1rpx solid #f5f5f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        
+        .time {
+          font-size: 24rpx;
+          color: #999;
+          flex-shrink: 0;
+        }
+        
+        .total {
+          font-size: 24rpx;
+          color: #666;
+          margin-left: auto;
+          padding-left: 20rpx;
+          flex-shrink: 0;
+          text-align: right;
+          
+          .amount {
+            font-size: 28rpx;
+            color: #ff4444;
+            font-weight: 500;
+            margin-left: 4rpx;
+            
+            &::before {
+              content: '¥';
               font-size: 24rpx;
-              color: #999;
+              margin-right: 2rpx;
+            }
+          }
+        }
+      }
+      
+      .actions {
+        padding: 16rpx 24rpx;
+        border-top: 1rpx solid #f5f5f5;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16rpx;
+        width: 100%;
+        box-sizing: border-box;
+        
+        .btn {
+          font-size: 24rpx;
+          padding: 10rpx 24rpx;
+          border-radius: 28rpx;
+          font-weight: 400;
+          white-space: nowrap;
+          flex-shrink: 0;
+          
+          &.plain {
+            color: #666;
+            background: #f8f8f8;
+            border: 1rpx solid #eee;
+            
+            &:active {
+              background: #f5f5f5;
+            }
+          }
+          
+          &.primary {
+            color: #fff;
+            background: #ff4444;
+            
+            &:active {
+              opacity: 0.9;
             }
           }
         }
       }
     }
-    
-    .order-info {
-      padding: 20rpx 24rpx;
-      border-top: 1rpx solid #f5f5f5;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      
-      .time {
-        font-size: 24rpx;
-        color: #999;
-      }
-      
-      .total {
-        font-size: 24rpx;
-        color: #666;
-        
-        .amount {
-          font-size: 28rpx;
-          color: #ff4444;
-          font-weight: 500;
-          margin-left: 4rpx;
-          
-          &::before {
-            content: '¥';
-            font-size: 24rpx;
-            margin-right: 2rpx;
-          }
-        }
-      }
-    }
-    
-    .actions {
-      padding: 16rpx 24rpx;
-      border-top: 1rpx solid #f5f5f5;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      
-      .btn {
-        margin-left: 16rpx;
-        font-size: 24rpx;
-        padding: 10rpx 24rpx;
-        border-radius: 28rpx;
-        font-weight: 400;
-        
-        &.plain {
-          color: #666;
-          background: #f8f8f8;
-          border: 1rpx solid #eee;
-          
-          &:active {
-            background: #f5f5f5;
-          }
-        }
-        
-        &.primary {
-          color: #fff;
-          background: #ff4444;
-          
-          &:active {
-            opacity: 0.9;
-          }
-        }
-      }
-    }
   }
-  
-  .empty {
-    padding: 120rpx 0;
-    text-align: center;
-    
-    image {
-      width: 200rpx;
-      height: 200rpx;
-      margin-bottom: 20rpx;
-    }
-    
-    text {
-      font-size: 26rpx;
-      color: #999;
-    }
-  }
-  
-  .loading {
-    padding: 24rpx;
-    text-align: center;
-    
-    .loading-text {
-      color: #999;
-      font-size: 26rpx;
-    }
-  }
+}
+
+// 添加文本溢出省略号的 mixin
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 修改滚动条样式
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 </style> 

@@ -1,27 +1,19 @@
-import { userApi } from './user'
-import { cartApi } from './cart'
+// 导入所有 mock 接口
 import { orderApi } from './order'
-import { addressApi } from './address'
+import { cartApi } from './cart'
+import { userApi } from './user'
 import { foodApi } from './food'
-import { paymentApi } from './payment'
 import { shopApi } from './shop'
+import { addressApi } from './address'
+import { paymentApi } from './payment'
 
-// 统一导出所有 mock API
-export const mockApi = {
-  ...userApi,
-  ...cartApi,
-  ...orderApi,
-  ...addressApi,
-  ...foodApi,
-  ...paymentApi,
-  ...shopApi
-}
-
-// 统一导出所有 mock 数据，方便其他模块直接使用
-export * from './user'
-export * from './cart'
-export * from './order'
-export * from './address'
-export * from './food'
-export * from './payment'
-export * from './shop' 
+// 统一导出所有 mock 接口
+export default {
+  orderApi,
+  cartApi,
+  userApi,
+  foodApi,
+  shopApi,
+  addressApi,
+  paymentApi
+} 

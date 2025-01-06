@@ -1,119 +1,79 @@
-import { mockApi } from '../mock'
-
-export function mockPlugin() {
+// Mock 插件
+export const mockPlugin = (mockApis) => {
   return {
-    name: 'vite:mock',
-    configureServer(server) {
-      console.log('Mock plugin enabled')
-      console.log('Available mock APIs:', Object.keys(mockApi))
-      
-      server.middlewares.use((req, res, next) => {
-        console.log(`[Mock] Received request: ${req.method} ${req.url}`)
-        
-        if (req.url.includes('/@fs/') || 
-            req.url.includes('/@id/') || 
-            req.url.includes('/@vite/')) {
-          return next()
-        }
-        
-        if (req.url.endsWith('.js') || req.url.endsWith('.ts')) {
-          console.log('[Mock] Module request, skipping')
-          return next()
-        }
-        
-        if (req.url.includes('.') && !req.url.endsWith('.json')) {
-          console.log('[Mock] Static file request, skipping')
-          return next()
-        }
-        
+    name: 'vite-plugin-mock',
+    configureServer({ middlewares }) {
+      middlewares.use(async (req, res, next) => {
+        // 跳过非 API 请求
         if (!req.url.startsWith('/api/')) {
-          console.log('[Mock] Not an API request, skipping')
           return next()
         }
 
-        const urlWithoutQuery = req.url.split('?')[0]
-        const path = urlWithoutQuery.replace(/^\/api\//, '')
-        
-        console.log(`[Mock] Processing API request: ${req.method} ${path}`)
+        const url = new URL(req.url, `http://${req.headers.host}`)
+        const path = url.pathname.replace('/api', '') // 移除 /api/ 前缀
+        const method = req.method
 
-        const mockFn = mockApi[path]
-
-        if (!mockFn) {
-          console.warn(`[Mock] API not found: ${path}`)
-          console.warn('Available APIs:', Object.keys(mockApi))
-          res.statusCode = 404
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({
-            code: 1,
-            message: `API not implemented: ${path}`
-          }))
-          return
-        }
-
-        console.log(`[Mock] Found mock handler for: ${path}`)
-
+        // 解析请求体
         let body = ''
         req.on('data', chunk => {
           body += chunk
         })
 
-        req.on('end', () => {
-          let data = {}
-          
-          if (body) {
+        await new Promise((resolve) => {
+          req.on('end', () => {
             try {
-              data = JSON.parse(body)
-              console.log(`[Mock] Request body:`, data)
-            } catch (e) {
-              console.error('[Mock] Failed to parse request body:', e)
-            }
-          }
+              // 遍历所有 mock 接口定义
+              for (const api of Object.values(mockApis)) {
+                if (Array.isArray(api)) {
+                  for (const item of api) {
+                    const [itemMethod, itemPath] = Object.keys(item)[0].split(' ')
+                    const apiPath = itemPath.slice(1) // 移除开头的 /
+                    
+                    if (path === apiPath && method === itemMethod) {
+                      const handler = item[`${itemMethod} ${itemPath}`]
+                      const params = method === 'GET'
+                        ? Object.fromEntries(url.searchParams)
+                        : body ? JSON.parse(body) : {}
 
-          const queryString = req.url.split('?')[1]
-          if (queryString) {
-            const queryParams = queryString.split('&').reduce((params, param) => {
-              const [key, value] = param.split('=')
-              params[key] = decodeURIComponent(value)
-              return params
-            }, {})
-            data = { ...data, ...queryParams }
-            console.log(`[Mock] Query parameters:`, queryParams)
-          }
+                      try {
+                        const result = handler(params)
+                        res.setHeader('Content-Type', 'application/json')
+                        res.end(JSON.stringify(result))
+                        return
+                      } catch (error) {
+                        console.error(`[Mock] API error: ${path}`, error)
+                        res.statusCode = 500
+                        res.setHeader('Content-Type', 'application/json')
+                        res.end(JSON.stringify({
+                          code: 1,
+                          message: error.message || '接口错误'
+                        }))
+                        return
+                      }
+                    }
+                  }
+                }
+              }
 
-          try {
-            console.log(`[Mock] Executing handler for ${path}`)
-            const response = mockFn(data)
-            console.log(`[Mock] Response for ${path}:`, response)
-            
-            setTimeout(() => {
+              // 没有找到匹配的接口
+              console.warn(`[Mock] API not found: ${method} ${path}`)
+              res.statusCode = 404
               res.setHeader('Content-Type', 'application/json')
-              res.setHeader('Mock-Data', 'true')
-              res.end(JSON.stringify(response))
-              console.log(`[Mock] Response sent for ${path}`)
-            }, 300)
-          } catch (error) {
-            console.error('[Mock] API error:', error)
-            console.error(error.stack)
-            res.statusCode = 500
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({
-              code: 1,
-              message: error.message || '接口错误',
-              path: path,
-              error: error.stack
-            }))
-          }
-        })
-
-        req.on('error', (error) => {
-          console.error('[Mock] Request error:', error)
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({
-            code: 1,
-            message: 'Request error',
-            error: error.message
-          }))
+              res.end(JSON.stringify({
+                code: 1,
+                message: `API not found: ${method} ${path}`
+              }))
+            } catch (error) {
+              console.error('[Mock] Server error:', error)
+              res.statusCode = 500
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({
+                code: 1,
+                message: error.message || '服务器错误'
+              }))
+            }
+            resolve()
+          })
         })
       })
     }
