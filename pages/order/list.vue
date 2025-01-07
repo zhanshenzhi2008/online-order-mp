@@ -1,15 +1,28 @@
 <template>
   <view class="order-list">
-    <!-- 使用虚拟列表优化长列表性能 -->
-    <recycle-list
-      :items="orderList"
-      :item-size="120"
-      :buffer-size="5"
+    <!-- 状态切换 -->
+    <scroll-view class="status-tabs" scroll-x>
+      <view
+          class="tab-item"
+          v-for="(item, index) in tabs"
+          :key="index"
+          :class="{ active: currentTab === index }"
+          @tap="changeTab(index)"
+      >
+        <text>{{item.name}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 订单列表 -->
+    <scroll-view
+        class="order-scroll"
+        scroll-y
+        refresher-enabled
+        @refresherrefresh="onRefresh"
+        :refresher-triggered="refreshing"
     >
-      <template #item="{ item }">
-        <order-item :order="item" />
-      </template>
-    </recycle-list>
+      <!-- ... 其他内容保持不变 ... -->
+    </scroll-view>
   </view>
 </template>
 
@@ -200,7 +213,7 @@ onMounted(() => {
   min-height: 100vh;
   background: #f8f8f8;
   padding-bottom: 20rpx;
-  
+
   .status-tabs {
     position: fixed;
     top: 0;
@@ -211,18 +224,18 @@ onMounted(() => {
     white-space: nowrap;
     border-bottom: 2rpx solid #f5f5f5;
     box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.03);
-    
+
     .tab-item {
       display: inline-block;
       padding: 28rpx 40rpx;
       font-size: 28rpx;
       color: #666;
       position: relative;
-      
+
       &.active {
         color: #ff4444;
         font-weight: 500;
-        
+
         &::after {
           content: '';
           position: absolute;
@@ -236,49 +249,49 @@ onMounted(() => {
       }
     }
   }
-  
+
   .order-scroll {
     height: calc(100vh - 88rpx);
     margin-top: 88rpx;
     padding: 20rpx;
     padding-right: 40rpx;
     box-sizing: border-box;
-    
+
     .order-item {
       background: #fff;
       border-radius: 12rpx;
       margin-bottom: 20rpx;
       padding: 20rpx;
-      
+
       .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 20rpx 24rpx;
         border-bottom: 1rpx solid #f5f5f5;
-        
+
         .shop {
           display: flex;
           align-items: center;
-          
+
           image {
             width: 36rpx;
             height: 36rpx;
             margin-right: 12rpx;
             border-radius: 6rpx;
           }
-          
+
           text {
             font-size: 28rpx;
             font-weight: 500;
             color: #333;
           }
-          
+
           .order-type {
             display: flex;
             align-items: center;
             margin-left: 20rpx;
-            
+
             .type-tag {
               font-size: 22rpx;
               color: #91683d;
@@ -286,14 +299,14 @@ onMounted(() => {
               padding: 4rpx 12rpx;
               border-radius: 16rpx;
               margin-right: 12rpx;
-              
+
               &:last-child {
                 margin-right: 0;
               }
             }
           }
         }
-        
+
         .status {
           font-size: 26rpx;
           color: #ff4444;
@@ -303,17 +316,17 @@ onMounted(() => {
           flex-shrink: 0;
         }
       }
-      
+
       .goods-list {
         padding: 24rpx;
-        
+
         .goods-item {
           display: flex;
           align-items: center;
           margin-bottom: 20rpx;
           width: 100%;
           box-sizing: border-box;
-          
+
           image {
             width: 120rpx;
             height: 120rpx;
@@ -322,12 +335,12 @@ onMounted(() => {
             background: #f8f8f8;
             flex-shrink: 0;
           }
-          
+
           .info {
             flex: 1;
             min-width: 0;
             margin-right: 20rpx;
-            
+
             .name {
               font-size: 28rpx;
               font-weight: 400;
@@ -335,24 +348,24 @@ onMounted(() => {
               margin-bottom: 12rpx;
               @include text-ellipsis;
             }
-            
+
             .price-wrap {
               display: flex;
               align-items: center;
-              
+
               .price {
                 font-size: 28rpx;
                 color: #ff4444;
                 font-weight: 500;
                 flex-shrink: 0;
-                
+
                 &::before {
                   content: '¥';
                   font-size: 24rpx;
                   margin-right: 2rpx;
                 }
               }
-              
+
               .quantity {
                 font-size: 24rpx;
                 color: #999;
@@ -364,7 +377,7 @@ onMounted(() => {
           }
         }
       }
-      
+
       .order-info {
         padding: 20rpx 24rpx;
         border-top: 1rpx solid #f5f5f5;
@@ -373,13 +386,13 @@ onMounted(() => {
         align-items: center;
         width: 100%;
         box-sizing: border-box;
-        
+
         .time {
           font-size: 24rpx;
           color: #999;
           flex-shrink: 0;
         }
-        
+
         .total {
           font-size: 24rpx;
           color: #666;
@@ -387,13 +400,13 @@ onMounted(() => {
           padding-left: 20rpx;
           flex-shrink: 0;
           text-align: right;
-          
+
           .amount {
             font-size: 28rpx;
             color: #ff4444;
             font-weight: 500;
             margin-left: 4rpx;
-            
+
             &::before {
               content: '¥';
               font-size: 24rpx;
@@ -402,7 +415,7 @@ onMounted(() => {
           }
         }
       }
-      
+
       .actions {
         padding: 16rpx 24rpx;
         border-top: 1rpx solid #f5f5f5;
@@ -413,7 +426,7 @@ onMounted(() => {
         gap: 16rpx;
         width: 100%;
         box-sizing: border-box;
-        
+
         .btn {
           font-size: 24rpx;
           padding: 10rpx 24rpx;
@@ -421,21 +434,21 @@ onMounted(() => {
           font-weight: 400;
           white-space: nowrap;
           flex-shrink: 0;
-          
+
           &.plain {
             color: #666;
             background: #f8f8f8;
             border: 1rpx solid #eee;
-            
+
             &:active {
               background: #f5f5f5;
             }
           }
-          
+
           &.primary {
             color: #fff;
             background: #ff4444;
-            
+
             &:active {
               opacity: 0.9;
             }
