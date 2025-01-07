@@ -153,11 +153,11 @@ const banners = ref([
 ])
 
 // 配送方式
-const deliveryType = ref(menuStore.deliveryType) // 从 store 获取初始值
+const deliveryType = ref(menuStore.deliveryType || 'selfPickup') // 添加默认值
 
 // 监听 menuStore 中配送方式的变化
 watch(() => menuStore.deliveryType, (newType) => {
-  if (newType !== deliveryType.value) {
+  if (newType && newType !== deliveryType.value) {
     deliveryType.value = newType
   }
 })
@@ -174,14 +174,28 @@ const switchDeliveryType = (type) => {
       success: (res) => {
         if (res.confirm) {
           cartStore.clearCart() // 清空购物车
-          deliveryType.value = type
-          menuStore.setDeliveryType(type) // 同步到 store
+          if (type === 'delivery') {
+            // 如果切换到外卖，先跳转到门店列表
+            uni.navigateTo({
+              url: '/pages/shop/list'
+            })
+          } else {
+            deliveryType.value = type
+            menuStore.setDeliveryType(type) // 同步到 store
+          }
         }
       }
     })
   } else {
-    deliveryType.value = type
-    menuStore.setDeliveryType(type) // 同步到 store
+    if (type === 'delivery') {
+      // 如果切换到外卖，先跳转到门店列表
+      uni.navigateTo({
+        url: '/pages/shop/list'
+      })
+    } else {
+      deliveryType.value = type
+      menuStore.setDeliveryType(type) // 同步到 store
+    }
   }
 }
 

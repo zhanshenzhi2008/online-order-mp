@@ -2,7 +2,7 @@
 export const shops = [
   {
     id: '1',
-    name: '淄博烧烤',
+    name: '淄博烧烤(三里屯店)',
     logo: '/static/images/shop/logo.png',
     banner: '/static/images/shop/banner.jpg',
     description: '正宗淄博烧烤，各种烤串、凉菜、主食应有尽有',
@@ -17,12 +17,12 @@ export const shops = [
     ratingCount: 1000,
     status: 'open', // open-营业中 closed-休息中
     distance: 1.2,
-    monthSales: 3000,
+    monthlySales: 3000,
     categories: ['烧烤', '凉菜', '主食']
   },
   {
     id: '2',
-    name: '老王烧烤',
+    name: '老王烧烤(共青团路店)',
     logo: '/static/images/shop/logo2.png',
     banner: '/static/images/shop/banner2.jpg',
     description: '特色烧烤，价格实惠',
@@ -37,7 +37,7 @@ export const shops = [
     ratingCount: 800,
     status: 'open',
     distance: 2.5,
-    monthSales: 2000,
+    monthlySales: 2000,
     categories: ['烧烤', '小炒', '饮品']
   }
 ]
@@ -50,25 +50,8 @@ export const shopApi = {
   },
 
   // 获取店铺列表
-  'GET /shop/list': (params) => {
-    const { category, page = 1, pageSize = 10 } = params
-    let shopList = [...shops]
-    if (category) {
-      shopList = shopList.filter(shop => shop.categories.includes(category))
-    }
-    // 模拟分页
-    const start = (page - 1) * pageSize
-    const end = start + pageSize
-    return {
-      code: 0,
-      data: {
-        list: shopList.slice(start, end),
-        total: shopList.length,
-        page: Number(page),
-        pageSize: Number(pageSize),
-        hasMore: end < shopList.length
-      }
-    }
+  'GET /shop/list': () => {
+    return { code: 0, data: shops }
   },
 
   // 获取店铺信息

@@ -73,6 +73,33 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
+  // 获取当前订单
+  const getCurrentOrder = async () => {
+    if (currentOrder.value) {
+      return currentOrder.value
+    }
+
+    const pages = getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const orderId = currentPage && currentPage.options && currentPage.options.orderId
+
+    if (!orderId) {
+      return null
+    }
+
+    try {
+      const res = await orderApi.getOrderDetail({ id: orderId })
+      if (res && res.code === 0 && res.data) {
+        currentOrder.value = res.data
+        return res.data
+      }
+      return null
+    } catch (error) {
+      console.error('获取订单详情失败:', error)
+      return null
+    }
+  }
+
   return {
     currentOrder,
     orderList,
@@ -80,6 +107,7 @@ export const useOrderStore = defineStore('order', () => {
     getOrderList,
     payOrder,
     cancelOrder,
-    confirmOrder
+    confirmOrder,
+    getCurrentOrder
   }
 }) 

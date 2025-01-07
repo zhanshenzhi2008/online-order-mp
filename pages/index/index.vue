@@ -60,7 +60,7 @@ import { useAddressStore } from '@/stores'
 import { useMenuStore } from '@/stores'
 
 const searchText = ref('')
-const deliveryMode = ref('takeout') // 默认外卖模式
+const deliveryMode = ref('pickup') // 修改默认值为 pickup
 const deliveryStore = useDeliveryStore()
 const addressStore = useAddressStore()
 const menuStore = useMenuStore()

@@ -139,6 +139,10 @@ export const orderApi = {
   // 获取订单详情
   'GET /order/detail': (params) => {
     const { id } = params
+    if (!id) {
+      return { code: 1, message: '订单ID不能为空' }
+    }
+
     const order = orders.find(o => o.id === id)
     if (order) {
       return { 

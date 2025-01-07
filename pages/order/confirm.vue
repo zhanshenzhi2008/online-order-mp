@@ -42,7 +42,9 @@
             <text class="name">{{ selectedAddress.name }}</text>
             <text class="phone">{{ selectedAddress.phone }}</text>
           </view>
-          <view class="address">{{ selectedAddress.address }}</view>
+          <view class="address">
+            {{ selectedAddress.province }}{{ selectedAddress.city }}{{ selectedAddress.district }}{{ selectedAddress.detail }}
+          </view>
         </view>
       </block>
       <block v-else>
@@ -115,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCartStore, useAddressStore, useOrderStore } from '@/stores'
 
 const cartStore = useCartStore()
@@ -132,7 +134,12 @@ const pickupType = ref('dineIn')
 
 // 计算商品总金额
 const totalAmount = computed(() => {
-  return cartList.value.reduce((total, item) => total + item.price * item.quantity, 0)
+  if (!cartList.value || !cartList.value.length) return 0
+  return cartList.value.reduce((total, item) => {
+    const price = Number(item.price) || 0
+    const quantity = Number(item.quantity) || 0
+    return total + price * quantity
+  }, 0)
 })
 
 // 计算是否需要打包费
@@ -157,13 +164,14 @@ const finalAmount = computed(() => {
 
 // 初始化数据
 const initData = async (options = {}) => {
+  // 安全地获取 deliveryType
   deliveryType.value = options.deliveryType || 'delivery'
-  cartList.value = cartStore.cartList
+  cartList.value = cartStore.cartList || []
   
   // 如果是外卖配送，获取默认地址
   if (deliveryType.value === 'delivery') {
     const defaultAddr = await addressStore.getDefaultAddress()
-    if (!selectedAddress.value) {
+    if (!selectedAddress.value && defaultAddr) {
       selectedAddress.value = defaultAddr
     }
   }
@@ -174,13 +182,7 @@ const goToAddress = () => {
   if (deliveryType.value !== 'delivery') return
   
   uni.navigateTo({
-    url: '/pages/address/list?from=order',
-    success: () => {
-      // 监听页面返回事件
-      uni.$once('addressSelected', (address) => {
-        selectedAddress.value = address
-      })
-    }
+    url: '/pages/address/list?from=order'
   })
 }
 
@@ -211,7 +213,19 @@ const switchDeliveryType = (type) => {
 onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  initData(currentPage.options)
+  // 安全地获取 options
+  const options = currentPage && currentPage.options ? currentPage.options : {}
+  initData(options)
+
+  // 添加地址选择事件监听
+  uni.$on('addressSelected', (address) => {
+    selectedAddress.value = address
+  })
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  uni.$off('addressSelected')
 })
 
 // 提交订单
@@ -225,29 +239,44 @@ const submitOrder = async () => {
   }
 
   try {
+    uni.showLoading({
+      title: '创建订单中...',
+      mask: true
+    })
+
     const orderData = {
-      goods: cartList.value,
-      totalAmount: totalAmount.value,
-      finalAmount: finalAmount.value,
+      goods: cartList.value || [],
+      totalAmount: totalAmount.value || 0,
+      finalAmount: finalAmount.value || 0,
       deliveryType: deliveryType.value,
-      pickupType: deliveryType.value === 'selfPickup' ? pickupType.value : null, // 添加自取方式
-      deliveryFee: deliveryType.value === 'delivery' ? deliveryFee.value : 0,
+      pickupType: deliveryType.value === 'selfPickup' ? pickupType.value : null,
+      deliveryFee: deliveryType.value === 'delivery' ? Number(deliveryFee.value) || 0 : 0,
+      packagingFee: needPackagingFee.value ? Number(packagingFee.value) || 0 : 0,
       address: selectedAddress.value,
-      remark: remark.value,
+      remark: remark.value || '',
       createTime: new Date().toISOString(),
-      status: '待支付'
+      status: 'pending'
     }
 
     const res = await orderStore.createOrder(orderData)
-    if (res.success) {
+    
+    if (res && res.success) {
       cartStore.clearCart()
-      uni.redirectTo({
-        url: `/pages/pay/pay?orderId=${res.data.id}`
-      })
+      uni.hideLoading()
+      
+      const orderId = res.data && res.data.id
+      if (orderId) {
+        uni.redirectTo({
+          url: `/pages/payment/index?orderId=${orderId}`
+        })
+      } else {
+        throw new Error('订单ID不存在')
+      }
     } else {
-      throw new Error(res.message)
+      throw new Error((res && res.message) || '创建订单失败')
     }
   } catch (error) {
+    uni.hideLoading()
     uni.showToast({
       title: error.message || '创建订单失败',
       icon: 'none'

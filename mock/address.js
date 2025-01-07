@@ -7,7 +7,7 @@ export const addresses = [{
 		province: '北京市',
 		city: '北京市',
 		district: '朝阳区',
-		address: '三里屯SOHO',
+		detail: '三里屯SOHO 1号楼1单元101室',
 		isDefault: true,
 		tag: '公司'
 	},
@@ -19,7 +19,7 @@ export const addresses = [{
 		province: '北京市',
 		city: '北京市',
 		district: '海淀区',
-		address: '中关村软件园',
+		detail: '中关村软件园 2号楼3层',
 		isDefault: false,
 		tag: '家'
 	}
@@ -31,7 +31,10 @@ export const addressApi = {
 	'GET /address/list': () => {
 		return {
 			code: 0,
-			data: addresses
+			data: addresses.map(addr => ({
+				...addr,
+				address: `${addr.province}${addr.city}${addr.district}${addr.detail}`
+			}))
 		}
 	},
 

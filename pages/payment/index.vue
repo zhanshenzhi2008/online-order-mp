@@ -21,13 +21,13 @@
     <!-- 支付金额 -->
     <view class="payment-amount">
       <text class="label">支付金额</text>
-      <text class="amount">￥{{ order?.totalAmount || '0.00' }}</text>
+      <text class="amount">￥{{ order && order.totalAmount || '0.00' }}</text>
     </view>
 
     <!-- 支付按钮 -->
     <view class="pay-action">
       <button class="pay-button" @click="handlePay">
-        {{ selectedPayment === 'wxpay' ? '微信支付' : '支付宝支付' }} ￥{{ order?.totalAmount || '0.00' }}
+        {{ selectedPayment === 'wxpay' ? '微信支付' : '支付宝支付' }} ￥{{ order && order.totalAmount || '0.00' }}
       </button>
     </view>
   </view>
@@ -37,6 +37,7 @@
 import { ref, onMounted } from 'vue'
 import { useOrderStore } from '@/stores'
 import { paymentApi } from '@/utils/api'
+import { orderApi } from '@/utils/api'
 
 const orderStore = useOrderStore()
 const order = ref(null)
@@ -50,21 +51,28 @@ const selectPayment = (method) => {
 
 // 处理支付
 const handlePay = async () => {
-  if (!order.value) return
+  if (!order.value || !order.value.id) {
+    uni.showToast({
+      title: '订单信息不存在',
+      icon: 'none'
+    })
+    return
+  }
 
-  uni.showLoading({
-    title: '支付中...'
-  })
-  
   try {
+    uni.showLoading({
+      title: '支付中...',
+      mask: true
+    })
+    
     // 创建支付订单
     const payRes = await paymentApi.createPayment({
       orderId: order.value.id,
       paymentMethod: selectedPayment.value,
-      amount: order.value.totalAmount
+      amount: order.value.finalAmount || order.value.totalAmount
     })
 
-    if (payRes.code === 0) {
+    if (payRes && payRes.code === 0 && payRes.data) {
       // 根据支付方式调用不同的支付
       if (selectedPayment.value === 'wxpay') {
         await handleWxPay(payRes.data)
@@ -72,7 +80,7 @@ const handlePay = async () => {
         await handleAliPay(payRes.data)
       }
     } else {
-      handlePayError(new Error(payRes.message))
+      throw new Error((payRes && payRes.message) || '创建支付订单失败')
     }
   } catch (error) {
     handlePayError(error)
@@ -81,70 +89,52 @@ const handlePay = async () => {
 
 // 处理微信支付
 const handleWxPay = async (payData) => {
-  const wxRes = await paymentApi.wxPay(payData)
-  if (wxRes.code === 0) {
-    // #ifdef MP-WEIXIN
-    uni.pay({
-      ...wxRes.data,
-      success: () => handlePaySuccess(),
-      fail: (err) => handlePayError(err)
-    })
-    // #endif
-    
-    // #ifdef APP-PLUS
-    uni.getProvider({
-      service: 'payment',
-      success: function (res) {
-        if (res.provider.indexOf('wxpay') > -1) {
-          uni.payWithWeixin({
-            ...wxRes.data,
-            success: () => handlePaySuccess(),
-            fail: (err) => handlePayError(err)
-          })
-        } else {
-          handlePayError(new Error('当前环境不支持微信支付'))
-        }
+  try {
+    const wxRes = await paymentApi.wxPay(payData)
+    if (wxRes && wxRes.code === 0 && wxRes.data) {
+      // #ifdef MP-WEIXIN
+      uni.requestPayment({
+        ...wxRes.data,
+        success: () => handlePaySuccess(),
+        fail: (err) => handlePayError(err)
+      })
+      // #endif
+      
+      // #ifdef H5
+      if (wxRes.data.mweb_url) {
+        window.location.href = wxRes.data.mweb_url
+      } else {
+        throw new Error('获取支付链接失败')
       }
-    })
-    // #endif
-    
-    // #ifdef H5
-    window.location.href = wxRes.data.mweb_url
-    // #endif
-  } else {
-    handlePayError(new Error(wxRes.message))
+      // #endif
+    } else {
+      throw new Error((wxRes && wxRes.message) || '发起支付失败')
+    }
+  } catch (error) {
+    handlePayError(error)
   }
 }
 
 // 处理支付宝支付
 const handleAliPay = async (payData) => {
-  const aliRes = await paymentApi.aliPay(payData)
-  if (aliRes.code === 0) {
-    // #ifdef APP-PLUS
-    uni.getProvider({
-      service: 'payment',
-      success: function (res) {
-        if (res.provider.indexOf('alipay') > -1) {
-          uni.payWithAlipay({
-            orderInfo: aliRes.data.orderString,
-            success: () => handlePaySuccess(),
-            fail: (err) => handlePayError(err)
-          })
-        } else {
-          handlePayError(new Error('当前环境不支持支付宝支付'))
-        }
+  try {
+    const aliRes = await paymentApi.aliPay(payData)
+    if (aliRes && aliRes.code === 0 && aliRes.data) {
+      // #ifdef H5
+      if (aliRes.data.form) {
+        const div = document.createElement('div')
+        div.innerHTML = aliRes.data.form
+        document.body.appendChild(div)
+        document.forms[0].submit()
+      } else {
+        throw new Error('获取支付表单失败')
       }
-    })
-    // #endif
-    
-    // #ifdef H5
-    const div = document.createElement('div')
-    div.innerHTML = aliRes.data.form
-    document.body.appendChild(div)
-    document.forms[0].submit()
-    // #endif
-  } else {
-    handlePayError(new Error(aliRes.message))
+      // #endif
+    } else {
+      throw new Error((aliRes && aliRes.message) || '发起支付失败')
+    }
+  } catch (error) {
+    handlePayError(error)
   }
 }
 
@@ -160,36 +150,75 @@ const handlePaySuccess = () => {
 // 支付失败处理
 const handlePayError = (error) => {
   uni.hideLoading()
+  console.error('支付失败:', error)
+  const errMsg = error.errMsg || error.message || '支付失败'
   uni.showToast({
-    title: error.message || '支付失败',
+    title: errMsg,
     icon: 'none'
   })
   // 跳转到支付结果页
   uni.redirectTo({
-    url: `/pages/payment/result?status=fail&message=${error.message || '支付失败'}`
+    url: `/pages/payment/result?status=fail&message=${encodeURIComponent(errMsg)}`
   })
 }
 
 onMounted(async () => {
-  // 获取订单信息
-  order.value = orderStore.currentOrder
-  if (!order.value) {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const orderId = currentPage && currentPage.options && currentPage.options.orderId
+
+  if (!orderId) {
     uni.showToast({
-      title: '订单信息不存在',
+      title: '订单ID不存在',
       icon: 'none',
       success: () => {
         setTimeout(() => {
-          uni.navigateBack()
+          // 改为跳转到订单列表页面
+          uni.switchTab({
+            url: '/pages/order/index'
+          })
         }, 1500)
       }
     })
     return
   }
 
-  // 获取支付方式列表
-  const payRes = await paymentApi.getPaymentMethods()
-  if (payRes.code === 0) {
-    paymentMethods.value = payRes.data
+  try {
+    // 获取订单信息
+    const res = await orderApi.getOrderDetail({ id: orderId })
+    if (res && res.code === 0 && res.data) {
+      order.value = res.data
+      // 如果订单已支付，直接跳转到支付结果页
+      if (order.value.status === 'paid' || order.value.status === 'completed') {
+        uni.redirectTo({
+          url: '/pages/payment/result?status=success'
+        })
+        return
+      }
+    } else {
+      throw new Error('订单信息不存在')
+    }
+
+    // 获取支付方式列表
+    const payRes = await paymentApi.getPaymentMethods()
+    if (payRes && payRes.code === 0 && payRes.data) {
+      paymentMethods.value = payRes.data
+    } else {
+      throw new Error('获取支付方式失败')
+    }
+  } catch (error) {
+    uni.showToast({
+      title: error.message || '加载失败',
+      icon: 'none',
+      success: () => {
+        setTimeout(() => {
+          // 改为跳转到订单列表页面
+          uni.switchTab({
+            url: '/pages/order/index'
+          })
+        }, 1500)
+      }
+    })
   }
 })
 </script>
