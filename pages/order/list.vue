@@ -1,28 +1,15 @@
 <template>
   <view class="order-list">
-    <!-- 状态切换 -->
-    <scroll-view class="status-tabs" scroll-x>
-      <view 
-        class="tab-item" 
-        v-for="(item, index) in tabs" 
-        :key="index"
-        :class="{ active: currentTab === index }"
-        @tap="changeTab(index)"
-      >
-        <text>{{item.name}}</text>
-      </view>
-    </scroll-view>
-    
-    <!-- 订单列表 -->
-    <scroll-view 
-      class="order-scroll" 
-      scroll-y 
-      refresher-enabled
-      @refresherrefresh="onRefresh"
-      :refresher-triggered="refreshing"
+    <!-- 使用虚拟列表优化长列表性能 -->
+    <recycle-list
+      :items="orderList"
+      :item-size="120"
+      :buffer-size="5"
     >
-      <!-- ... 其他内容保持不变 ... -->
-    </scroll-view>
+      <template #item="{ item }">
+        <order-item :order="item" />
+      </template>
+    </recycle-list>
   </view>
 </template>
 

@@ -1,6 +1,13 @@
 <template>
   <view class="food-item">
-    <image :src="food.image" mode="aspectFill" class="food-image"></image>
+    <image 
+      :src="food.image"
+      mode="aspectFill"
+      lazy-load
+      loading="eager"
+      :placeholder="defaultImage"
+      @error="handleImageError"
+    />
     <view class="food-info">
       <text class="food-name">{{ food.name }}</text>
       <text class="food-price">￥{{ food.price }}</text>
@@ -49,6 +56,12 @@ const updateCart = (delta) => {
       quantity: quantity.value + delta
     })
   }
+}
+
+const defaultImage = '/static/images/placeholder.png'
+
+const handleImageError = (e) => {
+  e.target.src = defaultImage
 }
 </script>
 
