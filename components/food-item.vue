@@ -20,16 +20,23 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useCartStore } from '@/stores'
 
-const props = defineProps({
-  food: {
-    type: Object,
-    required: true
-  }
-})
+interface Food {
+  id: string
+  name: string
+  price: number
+  image: string
+  description?: string
+  specs?: string[]
+  additions?: string[]
+}
+
+const props = defineProps<{
+  food: Food
+}>()
 
 const cartStore = useCartStore()
 
@@ -40,7 +47,7 @@ const quantity = computed(() => {
 })
 
 // 更新购物车
-const updateCart = (delta) => {
+const updateCart = (delta: number): void => {
   if (delta > 0) {
     cartStore.addToCart(props.food)
   } else {

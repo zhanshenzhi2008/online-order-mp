@@ -26,17 +26,23 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeMount } from 'vue'
 import { orderApi, cartApi } from '@/utils/api'
+import type { Order, OrderStatus } from '@/types/order'
 
-const orderList = ref([])
+interface Tab {
+  name: string
+  status: OrderStatus | ''
+}
+
+const orderList = ref<Order[]>([])
 const loading = ref(false)
 const refreshing = ref(false)
 const currentTab = ref(0)
 const scrollHeight = ref(0)
 
-const tabs = [
+const tabs: Tab[] = [
   { name: '全部', status: '' },
   { name: '待付款', status: 'pending' },
   { name: '待发货', status: 'paid' },
@@ -45,7 +51,7 @@ const tabs = [
 ]
 
 // 计算滚动区域高度
-const calcScrollHeight = () => {
+const calcScrollHeight = (): void => {
   const systemInfo = uni.getSystemInfoSync()
   const tabsHeight = 88 // tabs的高度，单位rpx
   // 将rpx转换为px
@@ -58,7 +64,7 @@ onBeforeMount(() => {
 })
 
 // 下拉刷新
-const onRefresh = async () => {
+const onRefresh = async (): Promise<void> => {
   refreshing.value = true
   try {
     await fetchOrders(tabs[currentTab.value].status)
@@ -68,7 +74,7 @@ const onRefresh = async () => {
 }
 
 // 获取订单列表
-const fetchOrders = async (status = '') => {
+const fetchOrders = async (status: OrderStatus | '' = ''): Promise<void> => {
   loading.value = true
   try {
     const res = await orderApi.getOrders({ status })
@@ -79,7 +85,7 @@ const fetchOrders = async (status = '') => {
     }
   } catch (error) {
     uni.showToast({
-      title: error.message || '获取订单列表失败',
+      title: (error as Error).message || '获取订单列表失败',
       icon: 'none'
     })
   } finally {
@@ -87,12 +93,12 @@ const fetchOrders = async (status = '') => {
   }
 }
 
-const changeTab = (index) => {
+const changeTab = (index: number): void => {
   currentTab.value = index
   fetchOrders(tabs[index].status)
 }
 
-const cancelOrder = async (order) => {
+const cancelOrder = async (order: Order): Promise<void> => {
   try {
     const res = await orderApi.cancelOrder(order.id)
     if (res.code === 0) {
@@ -106,13 +112,13 @@ const cancelOrder = async (order) => {
     }
   } catch (error) {
     uni.showToast({
-      title: error.message || '取消订单失败',
+      title: (error as Error).message || '取消订单失败',
       icon: 'none'
     })
   }
 }
 
-const payOrder = async (order) => {
+const payOrder = async (order: Order): Promise<void> => {
   try {
     const res = await orderApi.payOrder(order.id)
     if (res.code === 0) {
@@ -126,13 +132,13 @@ const payOrder = async (order) => {
     }
   } catch (error) {
     uni.showToast({
-      title: error.message || '支付失败',
+      title: (error as Error).message || '支付失败',
       icon: 'none'
     })
   }
 }
 
-const confirmOrder = async (order) => {
+const confirmOrder = async (order: Order): Promise<void> => {
   try {
     const res = await orderApi.confirmOrder(order.id)
     if (res.code === 0) {
@@ -146,13 +152,13 @@ const confirmOrder = async (order) => {
     }
   } catch (error) {
     uni.showToast({
-      title: error.message || '确认收货失败',
+      title: (error as Error).message || '确认收货失败',
       icon: 'none'
     })
   }
 }
 
-const reorder = async (order) => {
+const reorder = async (order: Order): Promise<void> => {
   try {
     // 将订单中的商品添加到购物车
     for (const item of order.items) {
@@ -172,22 +178,22 @@ const reorder = async (order) => {
     })
   } catch (error) {
     uni.showToast({
-      title: error.message || '添加到购物车失败',
+      title: (error as Error).message || '添加到购物车失败',
       icon: 'none'
     })
   }
 }
 
 // 跳转到订单详情页
-const goToDetail = (order) => {
+const goToDetail = (order: Order): void => {
   uni.navigateTo({
     url: `/pages/order/detail?id=${order.id}`
   })
 }
 
 // 获取配送方式文本
-const getDeliveryTypeText = (type) => {
-  const typeMap = {
+const getDeliveryTypeText = (type: string): string => {
+  const typeMap: Record<string, string> = {
     delivery: '外卖配送',
     selfPickup: '到店自取'
   }
@@ -195,8 +201,8 @@ const getDeliveryTypeText = (type) => {
 }
 
 // 获取就餐方式文本
-const getPickupTypeText = (type) => {
-  const typeMap = {
+const getPickupTypeText = (type: string): string => {
+  const typeMap: Record<string, string> = {
     dineIn: '堂食',
     takeout: '打包'
   }
