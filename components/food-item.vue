@@ -1,26 +1,19 @@
 <template>
   <view class="food-item">
-    <image 
-      :src="food.image"
-      mode="aspectFill"
-      lazy-load
-      loading="eager"
-      :placeholder="defaultImage"
-      @error="handleImageError"
-    />
+    <image :src="food.image" mode="aspectFill" class="food-image"></image>
     <view class="food-info">
       <text class="food-name">{{ food.name }}</text>
       <text class="food-price">￥{{ food.price }}</text>
       <view class="food-control">
-        <text 
-          v-if="quantity > 0" 
-          class="minus" 
-          @click.stop="updateCart(-1)"
+        <text
+            v-if="quantity > 0"
+            class="minus"
+            @click.stop="updateCart(-1)"
         >-</text>
         <text v-if="quantity > 0" class="quantity">{{ quantity }}</text>
-        <text 
-          class="plus"
-          @click.stop="updateCart(1)"
+        <text
+            class="plus"
+            @click.stop="updateCart(1)"
         >+</text>
       </view>
     </view>
@@ -57,12 +50,6 @@ const updateCart = (delta) => {
     })
   }
 }
-
-const defaultImage = '/static/images/placeholder.png'
-
-const handleImageError = (e) => {
-  e.target.src = defaultImage
-}
 </script>
 
 <style lang="scss" scoped>
@@ -71,38 +58,38 @@ const handleImageError = (e) => {
   padding: 20rpx;
   background: #fff;
   border-radius: 12rpx;
-  
+
   .food-image {
     width: 160rpx;
     height: 160rpx;
     border-radius: 8rpx;
     margin-right: 20rpx;
   }
-  
+
   .food-info {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    
+
     .food-name {
       font-size: 28rpx;
       color: #333;
       font-weight: bold;
     }
-    
+
     .food-price {
       font-size: 32rpx;
       color: #ff6b81;
       font-weight: bold;
       margin: 10rpx 0;
     }
-    
+
     .food-control {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      
+
       .minus,
       .plus {
         width: 48rpx;
@@ -114,7 +101,7 @@ const handleImageError = (e) => {
         color: #fff;
         font-size: 28rpx;
       }
-      
+
       .quantity {
         min-width: 60rpx;
         text-align: center;
