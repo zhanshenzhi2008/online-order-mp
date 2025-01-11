@@ -46,15 +46,20 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/stores'
-import { userApi } from '@/utils/api'
+import { userApi } from '@/utils/apis/user'
 
 const userStore = useUserStore()
-const userInfo = ref({ ...userStore.userInfo })
+const userInfo = ref(userStore.userInfo ? { ...userStore.userInfo } : {
+  nickname: '',
+  avatar: '',
+  phone: '',
+  gender: 0
+})
 
 // 性别显示文本
 const genderText = computed(() => {
   const genderMap = { 0: '未设置', 1: '男', 2: '女' }
-  return genderMap[userInfo.value.gender || 0]
+  return genderMap[userInfo.value?.gender || 0]
 })
 
 // 选择头像

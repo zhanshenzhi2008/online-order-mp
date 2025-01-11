@@ -247,17 +247,27 @@ const confirmDelete = () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          const success = await addressStore.deleteAddress(formData.value.id)
-          if (success) {
+          const res = await addressStore.deleteAddress(formData.value.id)
+          if (res.code === 0) {
             uni.showToast({
               title: '删除成功',
-              icon: 'success'
+              icon: 'success',
+              duration: 2000,
+              success: () => {
+                setTimeout(() => {
+                  uni.navigateBack()
+                }, 1500)
+              }
             })
-            uni.navigateBack()
+          } else {
+            uni.showToast({
+              title: res.message || '删除失败',
+              icon: 'none'
+            })
           }
         } catch (error) {
           uni.showToast({
-            title: '删除失败',
+            title: error.message || '删除失败',
             icon: 'none'
           })
         }

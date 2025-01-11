@@ -64,7 +64,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores'
-import { userApi } from '@/utils/api'
+import { userApi } from '@/utils/apis/user'
 
 const userStore = useUserStore()
 const userInfo = ref(null)
@@ -73,6 +73,14 @@ const couponCount = ref(0) // 可用优惠券数量
 // 选择头像
 const chooseAvatar = async (e) => {
   e.stopPropagation() // 阻止事件冒泡，避免触发登录
+  
+  if (!userInfo.value) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    })
+    return
+  }
   
   uni.chooseImage({
     count: 1,

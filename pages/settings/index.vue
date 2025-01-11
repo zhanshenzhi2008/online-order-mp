@@ -7,14 +7,14 @@
         <view class="settings-item" @tap="goToProfile">
           <text class="item-label">个人资料</text>
           <view class="item-right">
-            <text class="item-value">{{ userInfo.nickname || '未设置' }}</text>
+            <text class="item-value">{{ userInfo?.nickname || '未设置' }}</text>
             <text class="arrow">></text>
           </view>
         </view>
         <view class="settings-item" @tap="navigateTo('/pages/settings/phone')">
           <text class="item-label">手机号码</text>
           <view class="item-right">
-            <text class="item-value">{{ formatPhone(userInfo.phone) }}</text>
+            <text class="item-value">{{ userInfo?.phone ? formatPhone(userInfo.phone) : '未绑定' }}</text>
             <text class="arrow">></text>
           </view>
         </view>

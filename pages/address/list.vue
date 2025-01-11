@@ -75,8 +75,31 @@ const deleteAddress = (address) => {
     content: '确定要删除该地址吗？',
     success: async (res) => {
       if (res.confirm) {
-        await addressStore.deleteAddress(address.id)
-        loadAddressList()
+        try {
+          const res = await addressStore.deleteAddress(address.id)
+          if (res.code === 0) {
+            uni.showToast({
+              title: '删除成功',
+              icon: 'success',
+              duration: 2000,
+              success: () => {
+                setTimeout(() => {
+                  loadAddressList()
+                }, 1500)
+              }
+            })
+          } else {
+            uni.showToast({
+              title: res.message || '删除失败',
+              icon: 'none'
+            })
+          }
+        } catch (error) {
+          uni.showToast({
+            title: error.message || '删除失败',
+            icon: 'none'
+          })
+        }
       }
     }
   })
